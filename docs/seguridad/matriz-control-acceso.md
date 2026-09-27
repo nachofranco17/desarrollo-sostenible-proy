@@ -1,11 +1,11 @@
 # Matriz de control de acceso
 
-Requerimiento de seguridad: **RS1** (ASVS v5.0.0-8.1.1)
-Versión: 1.0 (27/09/2026)
+Requerimiento de seguridad: **R1** (ASVS v5.0.0-8.1.1)
+Versión: 1.1 (27/09/2026)
 
-Este documento define, para cada tipo de consumidor, qué operaciones puede invocar y sobre qué conjunto de datos. Toda decisión de autorización de la plataforma se contrasta contra esta matriz. Es además la base para cargar los permisos del modelo ABAC (R4), para los conjuntos de operaciones por rol (R9) y para los casos de prueba de autorización (R20).
+Este documento define, para cada tipo de consumidor, qué operaciones puede invocar y sobre qué conjunto de datos. Toda decisión de autorización de la plataforma debe poder contrastarse contra esta matriz. Es además la base para cargar los permisos del modelo de autorización (R4, ver [modelo-autorizacion.md](modelo-autorizacion.md)), para los conjuntos de operaciones por rol (R9) y para los casos de prueba de autorización (R20).
 
-Las restricciones a nivel de campo (qué campos puede leer o modificar cada consumidor) se definen por separado en R2.
+Las restricciones a nivel de campo (qué campos puede leer o modificar cada consumidor) se definen en [restricciones-campo.md](restricciones-campo.md) (R2).
 
 ## Consumidores
 
@@ -26,12 +26,14 @@ Las restricciones a nivel de campo (qué campos puede leer o modificar cada cons
 | Perfil del Talento | Ver y modificar | — | propio | — | — | — |
 | | Ver perfil de postulante (campos de R2) | — | — | postul. | postul. | — |
 | Catálogo | Buscar y ver cursos/proyectos publicados | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Curso/proyecto | Crear, modificar, cambiar estado, eliminar | — | — | org | — | org |
+| Curso/proyecto | Crear, modificar, cambiar estado y eliminar (incluye lecciones y entregables) | — | — | org | — | org |
 | | Ver borradores | — | — | org | — | org |
 | Material | Subir o reemplazar | — | — | org | — | org |
 | | Descargar | — | inscripto | org | — | org |
 | Inscripción | Inscribirse a publicados | — | ✓ | — | — | — |
-| | Ver y actualizar avance | — | propia | — | — | — |
+| | Ver su inscripción y avance | — | propia | — | — | — |
+| | Marcar una lección como completada | — | inscripto | — | — | — |
+| | Enviar respuesta a un entregable | — | inscripto | — | — | — |
 | | Ver inscriptos y su avance (campos de R2) | — | — | org | — | org |
 | Oferta | Ver publicadas | — | ✓ | ✓ | ✓ | ✓ |
 | | Crear, modificar, cerrar, ver borradores | — | — | org | org | — |
@@ -40,7 +42,8 @@ Las restricciones a nivel de campo (qué campos puede leer o modificar cada cons
 | | Ver listado y cambiar estado | — | — | org | org | — |
 | Currículum | Subir o reemplazar | — | propio | — | — | — |
 | | Descargar | — | propio | postul. | postul. | — |
-| Staff | Invitar, asignar/cambiar rol, dar de baja | — | — | org (+R23) | — | — |
+| Staff | Invitar | — | — | org | — | — |
+| | Cambiar rol, dar de baja | — | — | org (+R23) | — | — |
 | | Ver miembros y permisos efectivos (R21) | — | — | org | — | — |
 
 ### Alcances
@@ -51,7 +54,7 @@ Las restricciones a nivel de campo (qué campos puede leer o modificar cada cons
 | **propio / propia / propias** | Solo las instancias del propio usuario (R11). |
 | **org** | Solo recursos de su empresa. El `empresa_id` se toma siempre de la sesión, nunca de la solicitud (R15). |
 | **postul.** | Solo Talentos que se postularon a una oferta de su empresa. |
-| **inscripto** | Solo material de cursos o proyectos a los que el Talento está inscripto. |
+| **inscripto** | Solo material, lecciones y entregables de cursos o proyectos a los que el Talento está inscripto, aunque luego hayan sido dados de baja. |
 | **+R23** | Requiere reautenticación antes de ejecutar la operación. |
 | **—** | Denegado. |
 
@@ -59,14 +62,27 @@ Las restricciones a nivel de campo (qué campos puede leer o modificar cada cons
 
 ## Casos fuera de la matriz
 
-- **Aceptación de una invitación al staff.** El sujeto no es un usuario con sesión sino el portador del token, enviado por correo. El endpoint igualmente atraviesa el PEP (R5). La membresía resultante queda sin rol hasta que el Admin de la empresa lo asigne (R7).
+- **Aceptación de una invitación al staff.** El sujeto no es un usuario con sesión sino el portador del token enviado por correo. El endpoint igualmente atraviesa el PEP (R5). La membresía resultante queda sin rol hasta que el Admin de la empresa lo asigne (R7).
 - **Registros de seguridad.** Ningún consumidor accede a ellos desde la aplicación, ni siquiera el Admin de empresa (R19).
-- **Alta de empresas y de su Admin.** La realiza el equipo de desarrollo mediante un script (u otro medio) versionado en este repositorio, que deja registro de cada alta. No existe pantalla de registro de empresas ni un tipo de usuario Administrador de plataforma.
+- **Alta de empresas y de su Admin.** La realiza el equipo de desarrollo mediante un script versionado en este repositorio, que deja registro de cada alta. No existe pantalla de registro de empresas ni un tipo de usuario Administrador de plataforma.
 
 ## Decisiones de diseño
 
-1. **No existe el Administrador de plataforma.** Las tareas de alta de empresas las hace el equipo de desarrollo (nosotros) por fuera de la aplicación, con el script u opción alternativa mencionada arriba.
-2. **El Talento recibe su conjunto base de permisos al registrarse.** Ese conjunto es su mínimo (R7). No se separa "buscar en el catálogo" de "inscribirse" o "postularse".
+1. **No existe el Administrador de plataforma.** Las tareas de alta de empresas las hace el equipo de desarrollo por fuera de la aplicación, con el script mencionado arriba.
+2. **El Talento recibe su conjunto base de permisos al registrarse.** Ese conjunto es su mínimo (R7). No se separa "buscar en el catálogo" de "inscribirse" o "postularse", porque la seguridad no debe impedir el uso central de la plataforma.
 3. **Una cuenta es de Talento o de staff, nunca ambas.** Si una persona quiere las dos cosas, necesita dos cuentas.
-4. **Cada miembro del staff pertenece a una sola empresa y tiene un solo rol.**
+4. **Cada miembro del staff pertenece a una sola empresa y tiene un solo rol.** No hace falta manejar una "organización activa" en la sesión.
 5. **El correo es único por cuenta.** Dos cuentas no pueden compartir correo. Cuando el correo ya existe, la respuesta al registro o a la invitación es genérica, para no revelar que esa persona usa la plataforma.
+6. **Las ofertas publicadas solo las ven usuarios autenticados.** El visitante tiene que registrarse como Talento para verlas.
+7. **El Admin y el Editor ven quién se inscribe a los cursos y proyectos de su empresa, y su avance.** El Reclutador no, porque ya ve el progreso de quienes se postulan a sus ofertas. En ese listado solo se muestran el nombre y el avance (ver R2).
+8. **El staff puede ver el catálogo y las ofertas publicadas de otras empresas.** Restringirlo no aportaría seguridad, porque cualquiera puede crear una cuenta de Talento y verlos.
+9. **Si un curso o proyecto se da de baja, los inscriptos conservan el acceso.** No se aceptan inscripciones nuevas, pero quien ya estaba inscripto mantiene el acceso a su material y a su avance.
+10. **Las lecciones se numeran, pero la navegación es libre.** Bloquear el acceso por orden agregaría una regla de autorización sin beneficio de seguridad. Para completar el curso se exigen todas las lecciones, en cualquier orden.
+11. **Los entregables se validan con respuesta verificable.** La empresa carga las respuestas aceptadas y el backend compara. El detalle está en [restricciones-campo.md](restricciones-campo.md).
+
+## Historial
+
+| Versión | Cambios |
+|---|---|
+| 1.0 | Versión inicial. |
+| 1.1 | Lecciones y entregables en la gestión de cursos. Operaciones del Talento para marcar lecciones y responder entregables. Separación de "invitar" y "cambiar rol / dar de baja" en Staff. Acceso de inscriptos a cursos dados de baja. Decisiones 9 a 11. |
