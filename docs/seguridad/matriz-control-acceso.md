@@ -79,10 +79,3 @@ Las restricciones a nivel de campo (qué campos puede leer o modificar cada cons
 9. **Si un curso o proyecto se da de baja, los inscriptos conservan el acceso.** No se aceptan inscripciones nuevas, pero quien ya estaba inscripto mantiene el acceso a su material y a su avance.
 10. **Las lecciones se numeran, pero la navegación es libre.** Bloquear el acceso por orden agregaría una regla de autorización sin beneficio de seguridad. Para completar el curso se exigen todas las lecciones, en cualquier orden.
 11. **Los entregables se validan con respuesta verificable.** La empresa carga las respuestas aceptadas y el backend compara. El detalle está en [restricciones-campo.md](restricciones-campo.md).
-
-## Historial
-
-| Versión | Cambios |
-|---|---|
-| 1.0 | Versión inicial. |
-| 1.1 | Lecciones y entregables en la gestión de cursos. Operaciones del Talento para marcar lecciones y responder entregables. Separación de "invitar" y "cambiar rol / dar de baja" en Staff. Acceso de inscriptos a cursos dados de baja. Decisiones 9 a 11. |
