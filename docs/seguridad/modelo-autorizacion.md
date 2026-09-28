@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.0 (27/09/2026)
+Versión: 1.1 (27/09/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -58,7 +58,7 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 | `staff.invitar` | Invitar un usuario al staff | — | — | ORG | — | — |
 | `staff.cambiar_rol` | Cambiar el rol de un miembro | — | — | ORG | — | — |
 | `staff.dar_baja` | Dar de baja a un miembro | — | — | ORG | — | — |
-| `staff.ver` | Ver miembros y permisos efectivos (R21) | — | — | ORG | — | — |
+| `staff.ver` | Ver miembros y su rol | — | — | ORG | — | — |
 
 **Caso especial: `invitacion.aceptar`.** No tiene filas en la tabla porque el sujeto no tiene sesión ni rol. El PEP la trata como una acción propia cuya única condición es que el token de invitación sea válido y no haya expirado.
 
@@ -115,6 +115,7 @@ Reglas del contrato:
 
 - **Denegar por defecto.** Si no hay un permiso que aplique, `puedeInvocar` y `autorizar` devuelven `false` y `filtrar` devuelve una condición que no coincide con ninguna fila (`cb.disjunction()`). Nunca una condición vacía, que coincidiría con todas (R6).
 - **Error equivale a denegar.** Cualquier excepción durante la evaluación se trata como denegación (R6).
+- **Escrituras transaccionales.** Toda operación de escritura se ejecuta dentro de una transacción (`@Transactional`), para que una denegación o un error a mitad de la operación no deje cambios aplicados.
 
 ### Declaración de la acción en cada endpoint
 
@@ -146,7 +147,7 @@ Curso curso = cursos.findOne(
     .orElseThrow(AccesoDenegadoException::new);
 ```
 
-Así, "no existe" y "no tiene permiso" producen la misma respuesta de prohibido, sin revelar la existencia del recurso (R17).
+Así, "no existe" y "no tiene permiso" producen la misma respuesta de prohibido, sin revelar la existencia del recurso (R11).
 
 ## 7. Modelo de datos
 
@@ -196,7 +197,7 @@ Todos los identificadores son UUID (R13). Las entidades vinculadas a una empresa
 | Pruebas | JUnit 5 + MockMvc + Testcontainers | R20 |
 | Frontend | React + TypeScript | — |
 
-Advertencias de configuración (R22):
+Configuración obligatoria del framework. R22 quedó fuera del alcance como requerimiento independiente, pero estas dos reglas se mantienen y se verifican con las pruebas de R20:
 
 - Spring Security no deniega todo por defecto. La configuración debe cerrar con `anyRequest().denyAll()`.
 - La protección CSRF no se desactiva, porque la sesión viaja en una cookie.
@@ -204,7 +205,7 @@ Advertencias de configuración (R22):
 ## 9. Decisiones de diseño
 
 1. **Roles como agrupadores de permisos en datos.** Como cada miembro del staff tiene un único rol, asignar permisos usuario por usuario no aporta nada. Lo que distingue este modelo de un RBAC con chequeos de rol en el código es dónde se decide: un evaluador, sobre permisos y relaciones con el objeto.
-2. **Toda consulta pasa por `filtrar`, incluso por id.** Unifica la verificación por instancia (R11) y evita revelar la existencia de recursos (R17).
+2. **Toda consulta pasa por `filtrar`, incluso por id.** Unifica la verificación por instancia y evita revelar la existencia de recursos (R11).
 3. **Sesión en el servidor en lugar de JWT.** Permite que los cambios de permisos tengan efecto inmediato (R16).
 4. **Identificadores UUID en todas las entidades.** Impiden enumerar recursos (R13).
 5. **`empresa_id` en toda entidad vinculada a una empresa.** Permite que el filtro por organización sea una condición directa, sin joins (R15).
