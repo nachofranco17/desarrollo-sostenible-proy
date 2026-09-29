@@ -1,0 +1,17 @@
+name: ds-backend
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: xperience-postgres
+    environment:
+      POSTGRES_DB: xperience
+      POSTGRES_USER: xperience
+      POSTGRES_PASSWORD: xperience
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
