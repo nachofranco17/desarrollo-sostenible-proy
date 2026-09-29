@@ -1,2 +1,8 @@
 .idea
+*.iml
 docs/InformeProyecto.md
+
+# Backend (Maven)
+target/
+HELP.md
+.mvn/wrapper/maven-wrapper.jar
