@@ -11,3 +11,4 @@ frontend/playwright-report/
 *.log
 .idea/
 *.iml
+docs/InformeProyecto.md
