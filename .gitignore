@@ -1,0 +1,25 @@
+# Backend
+backend/target/
+backend/bin/
+backend/.project
+backend/.classpath
+backend/.settings/
+backend/.factorypath
+backend/data/
+backend/logs/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE / SO
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# Entorno
+.env
+*.log

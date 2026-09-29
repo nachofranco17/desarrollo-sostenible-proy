@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: xperience
+  datasource:
+    url: ${XPERIENCE_DB_URL:jdbc:postgresql://localhost:5432/xperience}
+    username: ${XPERIENCE_DB_USER:xperience}
+    password: ${XPERIENCE_DB_PASSWORD:xperience}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 26MB
+
+app:
+  almacenamiento:
+    directorio: ${XPERIENCE_ALMACEN:./data/archivos}

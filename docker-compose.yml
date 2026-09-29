@@ -1,0 +1,15 @@
+# Base de datos para desarrollo local. Credenciales sólo de desarrollo.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: xperience
+      POSTGRES_USER: xperience
+      POSTGRES_PASSWORD: xperience
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - xperience-db:/var/lib/postgresql/data
+
+volumes:
+  xperience-db:
