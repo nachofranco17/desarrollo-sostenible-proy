@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.1 (27/09/2026)
+Versión: 1.2 (28/09/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -34,6 +34,9 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 | Acción | Operación | Visitante | Talento | Admin | Reclutador | Editor |
 |---|---|---|---|---|---|---|
 | `cuenta.registrar` | Registrarse como Talento | GLOBAL | — | — | — | — |
+| `sesion.iniciar` | Iniciar sesión | GLOBAL | — | — | — | — |
+| `sesion.cerrar` | Cerrar la propia sesión | — | PROPIO | PROPIO | PROPIO | PROPIO |
+| `sesion.reautenticar` | Confirmar la identidad antes de una operación sensible (R23) | — | — | PROPIO | — | — |
 | `cuenta.gestionar` | Ver y modificar configuración de la cuenta | — | PROPIO | PROPIO | PROPIO | PROPIO |
 | `perfil.gestionar` | Ver y modificar el propio perfil | — | PROPIO | — | — | — |
 | `perfil.ver_postulante` | Ver el perfil de un postulante | — | — | POSTULANTE | POSTULANTE | — |
@@ -137,6 +140,19 @@ El PEP (R5) lee la anotación antes de ejecutar el handler:
 - Si `puedeInvocar` devuelve `false`, rechaza.
 - En cualquier otro caso, deja pasar la solicitud al handler, que resuelve el nivel de dato.
 
+Toda denegación, sea del PEP o del handler, se informa a una interfaz de registro que implementa R18. Mientras R18 no esté hecho, la implementación no hace nada, pero el PEP ya la invoca:
+
+```java
+public interface RegistroAccesos {
+    void denegado(Sujeto sujeto, String accion, String recurso);
+}
+```
+
+Casos que no pasan por un controller y el PEP debe contemplar explícitamente:
+
+- **Login y logout.** Si se usa el login provisto por Spring Security, lo procesa un filtro antes de llegar a cualquier controller, por lo que la anotación no lo cubre. El PEP lo asocia a `sesion.iniciar` y `sesion.cerrar`.
+- **Endpoint `/error` de Spring Boot.** Con `denyAll()` queda bloqueado y los errores terminan como 403 genéricos. Se habilita explícitamente, sin exponer detalles internos.
+
 ### Uso en el handler
 
 Toda lectura pasa por `filtrar`, **incluidas las búsquedas por id**:
@@ -192,15 +208,17 @@ Todos los identificadores son UUID (R13). Las entidades vinculadas a una empresa
 | Base de datos | PostgreSQL | R19 (usuario con permiso solo de INSERT sobre los registros) |
 | Sesiones | Spring Session JDBC (en el servidor, no JWT) | R16 |
 | Migraciones | Flyway (esquema y carga de la tabla de permisos) | R1, R4 |
-| Archivos | MinIO con enlaces firmados de vigencia corta | R14 |
+| Archivos | MinIO privado, accesible solo desde el backend. Toda descarga pasa por un endpoint del backend (`material.descargar`, `curriculum.descargar`) | R5, R14 |
 | Límite de envíos | Bucket4j | Entregables |
 | Pruebas | JUnit 5 + MockMvc + Testcontainers | R20 |
-| Frontend | React + TypeScript | — |
+| Frontend | React + TypeScript, servido por su propio servidor (Vite en desarrollo). El backend expone solo la API | — |
 
 Configuración obligatoria del framework. R22 quedó fuera del alcance como requerimiento independiente, pero estas dos reglas se mantienen y se verifican con las pruebas de R20:
 
 - Spring Security no deniega todo por defecto. La configuración debe cerrar con `anyRequest().denyAll()`.
 - La protección CSRF no se desactiva, porque la sesión viaja en una cookie.
+
+En desarrollo, el servidor de Vite reenvía las llamadas a `/api` hacia el backend (`server.proxy`). Así el navegador ve un único origen, la cookie de sesión funciona sin configurar CORS y `SameSite` puede quedar en `Strict` o `Lax`.
 
 ## 9. Decisiones de diseño
 
@@ -209,3 +227,4 @@ Configuración obligatoria del framework. R22 quedó fuera del alcance como requ
 3. **Sesión en el servidor en lugar de JWT.** Permite que los cambios de permisos tengan efecto inmediato (R16).
 4. **Identificadores UUID en todas las entidades.** Impiden enumerar recursos (R13).
 5. **`empresa_id` en toda entidad vinculada a una empresa.** Permite que el filtro por organización sea una condición directa, sin joins (R15).
+6. **Los archivos se sirven siempre a través del backend.** Se descartaron los enlaces firmados porque la descarga no atravesaría el PEP (R5). El almacenamiento no es accesible desde el navegador.
