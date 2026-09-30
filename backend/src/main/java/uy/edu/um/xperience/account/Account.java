@@ -8,7 +8,7 @@ public record Account(UUID id, String correo, String nombre, String apellido,
                       UUID empresaId, String empresaNombre, String rol, String membresiaEstado) {
     public boolean canSignIn() {
         return activo && ("TALENTO".equals(tipoCuenta)
-                || ("ACTIVA".equals(membresiaEstado) && rol != null));
+                || ("STAFF".equals(tipoCuenta) && empresaId != null && rol != null && "ACTIVA".equals(membresiaEstado)));
     }
 
     public String effectiveRole() {

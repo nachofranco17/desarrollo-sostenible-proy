@@ -1,14 +1,12 @@
 package uy.edu.um.xperience.account;
 
 import jakarta.validation.Valid;
-import java.security.Principal;
+import java.sql.SQLException;
 import java.util.Map;
-import java.util.UUID;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
+import uy.edu.um.xperience.security.*;
 
 @RestController
 @RequestMapping("/api")
@@ -16,34 +14,27 @@ public class AuthController {
     public static final String REGISTRATION_MESSAGE =
         "Solicitud recibida. Si los datos permiten crear una cuenta, podrás iniciar sesión con las credenciales indicadas.";
     private final RegistrationService registration;
-    private final AccountRepository accounts;
-
-    public AuthController(RegistrationService registration, AccountRepository accounts) {
-        this.registration = registration;
-        this.accounts = accounts;
+    private final ProtectedAccounts accounts;
+    private final Sujetos subjects;
+    public AuthController(RegistrationService registration, ProtectedAccounts accounts, Sujetos subjects) {
+        this.registration = registration; this.accounts = accounts; this.subjects = subjects;
     }
-
-    @GetMapping("/auth/csrf")
-    public Map<String, String> csrf(CsrfToken token) {
-        return Map.of("token", token.getToken(), "headerName", token.getHeaderName());
-    }
-
     @PostMapping("/auth/register")
+    @RequiereAccion("cuenta.registrar")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public Map<String, String> register(@Valid @RequestBody RegisterRequest input) {
-        try {
-            registration.register(input);
-        } catch (DuplicateKeyException ignored) {
-            // Concurrent registrations have the same response as a normal duplicate.
-            // The service transaction has already rolled back before reaching this catch.
+        try { registration.register(subjects.current(), input); }
+        catch (DataIntegrityViolationException error) {
+            // The service transaction has rolled back. Only a unique-key collision is a generic duplicate.
+            boolean duplicate = false;
+            for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+                if (cause instanceof SQLException sql && "23505".equals(sql.getSQLState())) duplicate = true;
+            }
+            if (!duplicate) throw error;
         }
         return Map.of("message", REGISTRATION_MESSAGE);
     }
-
     @GetMapping("/account")
-    public AccountView current(Principal principal) {
-        return accounts.byId(UUID.fromString(principal.getName()))
-            .filter(Account::canSignIn).map(AccountView::from)
-            .orElseThrow(() -> new AccessDeniedException("Acceso denegado"));
-    }
+    @RequiereAccion("cuenta.gestionar")
+    public AccountView current() { return accounts.view(subjects.current()); }
 }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .tools/
 .data/
 .env
@@ -11,3 +12,7 @@ frontend/playwright-report/
 *.log
 .idea/
 *.iml
+=======
+.idea
+docs/InformeProyecto.md
+>>>>>>> main
