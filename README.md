@@ -2,7 +2,7 @@
 
 Plataforma de formación y empleabilidad. Esta entrega implementa el registro de Talentos y el inicio/cierre de sesión para cuentas habilitadas de Talento, Administrador, Reclutador y Editor.
 
-El registro público crea **únicamente Talentos**. Las empresas y su primer Administrador se crean mediante un script de desarrollo. No hay formulario ni endpoint público de alta de empresas. La invitación, aceptación y asignación de roles del resto del staff se implementarán en **RF7**; esta entrega ya permite autenticar esas cuentas una vez habilitadas.
+El registro público crea **únicamente Talentos**. Las empresas y su primer Administrador se crean mediante un script de desarrollo. No hay formulario ni endpoint público de alta de empresas. El envío y la aceptación de invitaciones del resto del staff siguen pendientes en **RF7**. Conforme a `docs/seguridad`, el staff necesita una membresía activa y un rol asignado para iniciar sesión y operar. El Administrador debe reautenticarse antes de asignar roles.
 
 ## Ejecutar en Windows sin Docker
 
@@ -58,7 +58,9 @@ cd backend
 .\mvnw.cmd test
 ```
 
-Las pruebas de integración levantan un servidor HTTP real y una base H2 en memoria. Comprueban cookies, rotación de sesión al ingresar, invalidación al salir, credenciales incorrectas, duplicados, registros concurrentes, rechazo de campos de privilegios, CSRF, alta transaccional y revocación de acceso.
+Las pruebas de integración levantan un servidor HTTP real y una base H2 en memoria. Comprueban cookies, rotación de sesión al ingresar, invalidación al salir, credenciales incorrectas, duplicados, registros concurrentes, rechazo de campos de privilegios, CSRF, alta transaccional y revocación de acceso. Las pruebas MockMvc verifican el PEP, las denegaciones, las consultas filtradas y la reautenticación. Otra prueba compara los 54 permisos persistidos con la tabla de `docs/seguridad/modelo-autorizacion.md`.
+
+`PostgresAuthIntegrationTest` repite los escenarios HTTP con Testcontainers y PostgreSQL cuando Docker está disponible. Si no lo está, se informa como omitida. No requiere configurar una base manualmente.
 
 Con el backend **dev** ejecutándose y el JAR actualizado, desde otra terminal:
 
@@ -92,12 +94,14 @@ Fuera del perfil local, las cookies requieren HTTPS por defecto. En un despliegu
 
 ## Implementación y alcance
 
-- Backend: Spring Boot/Security, JDBC con consultas parametrizadas, Flyway y Spring Session JDBC.
+- Backend: Spring Boot/Security, Spring Data JPA con Specifications, Flyway y Spring Session JDBC.
 - Frontend: React, TypeScript y Vite. No guarda credenciales ni tokens de sesión en localStorage.
 - Contraseñas: PBKDF2 con sal aleatoria y parámetros de Spring Security 5.8; nunca se devuelven por la API.
 - Sesiones: cookie HttpOnly, SameSite=Lax, expiración por 30 minutos de inactividad y protección CSRF también en login/logout.
-- Autorización: consulta de cuenta, membresía y permiso vigente en cada acceso a `/api/account`; el resto de las rutas del backend se deniega por defecto.
+- Autorización: `@RequiereAccion` por endpoint de negocio, PEP central y evaluador de permisos vigente por solicitud. Login y logout atraviesan el mismo evaluador desde un filtro. Las lecturas de datos de la API usan Specifications y se deniega por defecto.
+- Cambio de roles: reautenticación del Administrador mediante `POST /api/auth/reauthenticate`, válida por cinco minutos y vinculada a su sesión. Se rechazan cambios sobre la propia membresía y sobre otras empresas.
+- Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. Su implementación predeterminada no persiste eventos mientras R18/R19 estén pendientes, tal como permite el diseño.
 
-La autorización implementada cubre este requisito, no el evaluador completo de todos los recursos del informe. Cursos, perfiles editables, postulaciones, recuperación/verificación de correo, invitaciones RF7 y la auditoría general de seguridad quedan fuera de esta entrega.
+La autorización implementada cubre los recursos existentes de cuenta y membresía. El catálogo completo de permisos está cargado, pero los módulos de cursos, perfiles editables, postulaciones, recuperación/verificación de correo e invitaciones RF7 siguen pendientes. Los alcances que requieren inscripciones o postulaciones reales se deniegan hasta implementar esos recursos y sus consultas. No se agregan endpoints ficticios ni se aceptan relaciones de propiedad enviadas por el cliente.
 
-Ver [contrato HTTP y decisiones de alcance](docs/autenticacion.md).
+Ver [contrato HTTP y decisiones de alcance](docs/autenticacion.md) y [permisos mínimos y sus pruebas](docs/permisos-minimos.md).
