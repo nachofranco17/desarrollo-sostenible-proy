@@ -7,12 +7,15 @@ import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import uy.edu.um.xperience.account.*;
 
 @Configuration
@@ -37,19 +40,12 @@ public class SecurityConfiguration {
             .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
             .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").anonymous()
-            .requestMatchers(HttpMethod.GET, "/api/account").access((authentication, context) -> {
-                var current = authentication.get();
-                if (current == null || !current.isAuthenticated() || "anonymousUser".equals(current.getName())) {
-                    return new AuthorizationDecision(false);
-                }
-                // Session contains identity only: account, membership and permission are re-read.
-                var account = accounts.byId(UUID.fromString(current.getName()));
-                boolean allowed = account.map(a -> accounts.allowed(a, "cuenta.ver")).orElse(false);
-                if (!allowed && context.getRequest().getSession(false) != null) {
-                    context.getRequest().getSession(false).invalidate();
-                }
-                return new AuthorizationDecision(allowed);
-            })
+            .requestMatchers(HttpMethod.GET, "/api/account")
+                .access(requiresAction(accounts, "cuenta.ver", true))
+            .requestMatchers(HttpMethod.GET, "/api/profile/me")
+                .access(requiresAction(accounts, "perfil.gestionar", false))
+            .requestMatchers(HttpMethod.PATCH, "/api/profile/me")
+                .access(requiresAction(accounts, "perfil.gestionar", false))
             .anyRequest().denyAll());
         http.formLogin(login -> login.loginProcessingUrl("/api/auth/login")
             .usernameParameter("correo").passwordParameter("password")
@@ -63,6 +59,23 @@ public class SecurityConfiguration {
             .accessDeniedHandler((request, response, error) -> jsonError(response, 403, "Acceso denegado.")));
         http.requestCache(cache -> cache.disable());
         return http.build();
+    }
+
+    private static AuthorizationManager<RequestAuthorizationContext> requiresAction(
+            AccountRepository accounts, String action, boolean invalidateWhenDenied) {
+        return (authentication, context) -> {
+            Authentication current = authentication.get();
+            if (current == null || !current.isAuthenticated() || "anonymousUser".equals(current.getName())) {
+                return new AuthorizationDecision(false);
+            }
+            // Session contains identity only: account, membership and permission are re-read.
+            var account = accounts.byId(UUID.fromString(current.getName()));
+            boolean allowed = account.map(a -> accounts.allowed(a, action)).orElse(false);
+            if (!allowed && invalidateWhenDenied && context.getRequest().getSession(false) != null) {
+                context.getRequest().getSession(false).invalidate();
+            }
+            return new AuthorizationDecision(allowed);
+        };
     }
 
     private static void jsonError(HttpServletResponse response, int status, String message) throws IOException {
