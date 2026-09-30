@@ -1,17 +1,28 @@
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
+import { platform } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const password = 'una frase de prueba segura';
 
+function provisionCompanyAdmin(email: string) {
+  const env = { ...process.env, E2E_ADMIN_EMAIL: email, E2E_ADMIN_PASSWORD: password };
+  if (platform() === 'win32') {
+    execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+      fileURLToPath(new URL('./provision-fixture.ps1', import.meta.url))], {
+      env, timeout: 60_000, windowsHide: true, stdio: 'pipe',
+    });
+    return;
+  }
+  execFileSync('bash', [fileURLToPath(new URL('./provision-fixture.sh', import.meta.url))], {
+    env, timeout: 60_000, stdio: 'pipe',
+  });
+}
+
 test('script crea empresa y Administrador que puede iniciar y cerrar sesión', async ({ page }) => {
   test.setTimeout(90_000);
   const email = `admin-${crypto.randomUUID()}@example.test`;
-  execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
-    fileURLToPath(new URL('./provision-fixture.ps1', import.meta.url))], {
-    env: { ...process.env, E2E_ADMIN_EMAIL: email, E2E_ADMIN_PASSWORD: password },
-    timeout: 60_000, windowsHide: true, stdio: 'pipe',
-  });
+  provisionCompanyAdmin(email);
   await page.goto('/ingresar');
   await page.getByLabel('Correo electrónico').fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
@@ -42,6 +53,7 @@ test('registro de Talento, login, ruta protegida y logout', async ({ page }) => 
   await page.getByRole('button', { name: 'Crear cuenta de Talento' }).click();
   await expect(page.getByRole('status')).toContainText('Solicitud recibida');
   await page.getByRole('link', { name: 'Iniciá sesión' }).click();
+  await expect(page.getByRole('heading', { name: 'Iniciá sesión' })).toBeVisible();
   await page.getByLabel('Correo electrónico').fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill('incorrecta');
   await page.getByRole('button', { name: 'Ingresar', exact: true }).click();
