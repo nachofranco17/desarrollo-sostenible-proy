@@ -150,6 +150,43 @@ button.chip-option:hover, button.chip-selected:hover { background: #edf6df; }
 .button-link.secondary { background: white; color: #134b3c; margin-top: 12px; }
 .button-link.secondary:hover { background: #f3f7ef; }
 .button-link:hover { background: #21604e; color: white; }
+/* RF5: gestión de cursos y proyectos */
+main.wide { grid-template-columns: 1fr; max-width: 1040px; align-items: start; }
+textarea { width: 100%; border: 1px solid #b9c6bb; background: #fcfdfb; border-radius: 8px; padding: 13px; color: #18382f; font: inherit; resize: vertical; }
+textarea:focus { border-color: #236348; outline: 3px solid #d8f67a80; }
+fieldset.plain { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 18px; }
+fieldset.plain:disabled input, fieldset.plain:disabled textarea, fieldset.plain:disabled select { background: #f3f5f0; }
+.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.page-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.page-title h2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+button.compact, .button-link.compact { width: auto; margin: 0; padding: 9px 16px; font-size: 14px; }
+.button-link.compact { display: inline-block; margin-top: 14px; }
+button.danger { background: white; color: #942c19; border-color: #e8b4a8; }
+button.danger:hover { background: #fff0eb; }
+.confirm { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.notice.warning { background: #fff7e0; color: #7a5200; margin-bottom: 15px; }
+.state { font-size: 12px; font-weight: 700; letter-spacing: 0; padding: 5px 10px; border-radius: 20px; background: #eceff0; color: #5d6b65; }
+.state-publicado { background: #edf6df; color: #1f6b3a; }
+.state-bajado { background: #fff7e0; color: #7a5200; }
+.table-wrap { overflow-x: auto; border: 1px solid #dfe4d9; border-radius: 12px; margin: 8px 0 18px; }
+.course-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.course-table th, .course-table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid #e1e6dd; white-space: nowrap; }
+.course-table th { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #5d6b65; }
+.course-table td:first-child { white-space: normal; }
+.course-table tr:last-child td { border-bottom: 0; }
+.type-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.type-option { border: 1px solid #dfe4d9; border-radius: 12px; padding: 14px 16px; cursor: pointer; background: #fcfdfb; }
+.type-option input { width: auto; margin: 0; }
+.type-option small { margin: 0; font-weight: 400; }
+.type-option.selected { border-color: #134b3c; background: #edf6df; }
+.items { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+.item { border: 1px solid #dfe4d9; border-radius: 12px; padding: 14px 16px; }
+.item-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.item-body { white-space: pre-wrap; margin: 8px 0 0; font-size: 14px; line-height: 1.6; max-height: 9.6em; overflow: hidden; }
+.files { list-style: none; padding: 0; margin: 8px 0 14px; }
+.files li { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid #e1e6dd; }
+.files li:last-child { border-bottom: 0; }
 footer { text-align: center; padding: 25px; font-size: 12px; }
 @media (max-width: 800px) { header { padding: 24px; } .tagline { display: none; } main { grid-template-columns: 1fr; gap: 24px; padding: 0 24px; margin-top: 0; } aside { padding: 16px 0; } h1 { font-size: 34px; letter-spacing: -1px; } aside p { font-size: 16px; } .journey { display: none; } .panel { padding: 28px; } }
 @media (max-width: 380px) { .name-fields { grid-template-columns: 1fr; } .panel { padding: 22px; } }

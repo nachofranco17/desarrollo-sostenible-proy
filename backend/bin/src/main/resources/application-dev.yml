@@ -1,0 +1,10 @@
+# Perfil de desarrollo local. Crea empresas y usuarios de prueba (ver DatosDesarrollo).
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+app:
+  respuestas:
+    clave-hmac: clave-solo-para-desarrollo-no-usar-en-produccion

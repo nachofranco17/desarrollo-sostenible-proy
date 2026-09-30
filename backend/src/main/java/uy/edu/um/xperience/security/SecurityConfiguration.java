@@ -46,6 +46,15 @@ public class SecurityConfiguration {
                 .access(requiresAction(accounts, "perfil.gestionar", false))
             .requestMatchers(HttpMethod.PATCH, "/api/profile/me")
                 .access(requiresAction(accounts, "perfil.gestionar", false))
+            // RF5: gestión de cursos y proyectos. Qué rol tiene cada acción está en la tabla permiso (R9).
+            .requestMatchers(HttpMethod.GET, "/api/company/courses/*/materials/*")
+                .access(requiresAction(accounts, "material.descargar", false))
+            .requestMatchers(HttpMethod.POST, "/api/company/courses/*/materials")
+                .access(requiresAction(accounts, "material.subir", false))
+            .requestMatchers(HttpMethod.GET, "/api/company/courses", "/api/company/courses/*")
+                .access(requiresAction(accounts, "curso.ver_borrador", false))
+            .requestMatchers("/api/company/courses", "/api/company/courses/**")
+                .access(requiresAction(accounts, "curso.gestionar", false))
             .anyRequest().denyAll());
         http.formLogin(login -> login.loginProcessingUrl("/api/auth/login")
             .usernameParameter("correo").passwordParameter("password")

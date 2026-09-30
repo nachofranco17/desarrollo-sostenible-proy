@@ -1,7 +1,8 @@
 import { StrictMode, createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, post, patch, ApiError, type Account, type TalentProfile } from './api';
+import { CourseEditor, CourseList, NewCourse } from './gestion';
 import './styles.css';
 
 type AuthState = { account: Account | null; loading: boolean; error: string; refresh: () => Promise<void>; clear: () => void };
@@ -30,11 +31,16 @@ function AuthProvider({ children }: { children: ReactNode }) {
   return <Auth.Provider value={{ account, loading, error, refresh, clear: () => setAccount(null) }}>{children}</Auth.Provider>;
 }
 
+// Solo decide qué mostrar; el backend vuelve a verificar el permiso en cada solicitud (R9).
+const canManageCourses = (account: Account | null) => account?.rol === 'ADMIN' || account?.rol === 'EDITOR';
+
 function App() {
   const auth = useContext(Auth);
+  const wide = useLocation().pathname.startsWith('/gestion');
+  const courses = (page: ReactNode) => canManageCourses(auth.account) ? page : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />;
   return <>
     <header><Link to="/" className="brand" aria-label="XPerience, inicio"><span className="brand-mark">X</span>XPerience</Link><span className="tagline">Tu próximo paso empieza acá.</span></header>
-    <main><aside><span className="eyebrow">FORMACIÓN + OPORTUNIDADES</span><h1>Convertí lo que sabés<br />en tu próxima oportunidad.</h1><p>Un espacio para aprender, demostrar tus habilidades y conectar con el mundo IT.</p><div className="journey"><span>01 · Aprendé</span><span>02 · Creá</span><span>03 · Conectá</span></div></aside>
+    <main className={wide ? 'wide' : undefined}>{!wide && <aside><span className="eyebrow">FORMACIÓN + OPORTUNIDADES</span><h1>Convertí lo que sabés<br />en tu próxima oportunidad.</h1><p>Un espacio para aprender, demostrar tus habilidades y conectar con el mundo IT.</p><div className="journey"><span>01 · Aprendé</span><span>02 · Creá</span><span>03 · Conectá</span></div></aside>}
       <section className="panel" aria-label="Acceso a XPerience">
         {auth.loading ? <p role="status">Cargando…</p> : auth.error ? <><p role="alert">{auth.error}</p><button onClick={() => void auth.refresh().catch(() => {})}>Reintentar</button></> :
         <Routes>
@@ -43,6 +49,9 @@ function App() {
           <Route path="/registro" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm register />} />
           <Route path="/mi-cuenta" element={auth.account ? <MyAccount account={auth.account} /> : <Navigate to="/ingresar" replace />} />
           <Route path="/perfil" element={auth.account?.rol === 'TALENTO' ? <TalentProfilePage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+          <Route path="/gestion" element={courses(<CourseList />)} />
+          <Route path="/gestion/nuevo" element={courses(<NewCourse />)} />
+          <Route path="/gestion/:id" element={courses(<CourseEditor />)} />
           <Route path="*" element={<><h2>Página no encontrada</h2><Link to="/">Volver al inicio</Link></>} />
         </Routes>}
       </section>
@@ -124,6 +133,7 @@ function MyAccount({ account }: { account: Account }) {
     <dl><dt>Nombre</dt><dd>{account.nombre} {account.apellido}</dd><dt>Correo</dt><dd>{account.correo}</dd><dt>Rol</dt><dd>{roles[account.rol]}</dd>{account.empresaNombre && <><dt>Empresa</dt><dd>{account.empresaNombre}</dd></>}</dl>
     {message && <p className="notice" role="status">{message}</p>}{error && <p className="notice error" role="alert">{error}</p>}
     {account.rol === 'TALENTO' && <Link className="button-link" to="/perfil">Ver mi perfil</Link>}
+    {canManageCourses(account) && <Link className="button-link" to="/gestion">Gestionar cursos y proyectos</Link>}
     <button disabled={busy} onClick={verify}>Verificar acceso</button><button disabled={busy} className="secondary" onClick={logout}>Cerrar sesión</button>
   </>;
 }

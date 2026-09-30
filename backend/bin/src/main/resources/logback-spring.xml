@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProperty name="LOG_DIR" source="app.registros.directorio" defaultValue="./logs"/>
+
+    <!--
+      Registros de seguridad (R18) en un archivo propio, separado del log de la aplicación.
+      Cada línea es un JSON ya codificado por RegistroSeguridad, así que el patrón no agrega nada
+      controlado por el usuario (R19). En producción el archivo se monta en un volumen de solo
+      agregado (chattr +a) con permisos distintos a los del proceso que lee la base de datos.
+    -->
+    <appender name="SEGURIDAD_ARCHIVO" class="ch.qos.logback.core.FileAppender">
+        <file>${LOG_DIR}/seguridad.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="SEGURIDAD" level="INFO" additivity="false">
+        <appender-ref ref="SEGURIDAD_ARCHIVO"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

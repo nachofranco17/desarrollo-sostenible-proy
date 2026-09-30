@@ -1,0 +1,6 @@
+# Base en memoria para levantar la aplicación sin Docker. Usar junto con dev: --spring.profiles.active=dev,h2
+spring:
+  datasource:
+    url: jdbc:h2:mem:xperience;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password: ""

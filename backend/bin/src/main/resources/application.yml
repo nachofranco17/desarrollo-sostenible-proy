@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: xperience
+  datasource:
+    url: ${XPERIENCE_DB_URL:jdbc:postgresql://localhost:5432/xperience}
+    username: ${XPERIENCE_DB_USER:xperience}
+    password: ${XPERIENCE_DB_PASSWORD:xperience}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 26MB
+  web:
+    resources:
+      # El backend no sirve archivos estáticos: todo archivo sale por un endpoint que atraviesa el PEP (R14).
+      add-mappings: false
+  jackson:
+    deserialization:
+      # Un campo que el DTO de escritura no declara rechaza la solicitud completa (R12).
+      fail-on-unknown-properties: true
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+    whitelabel:
+      enabled: false
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: XPSESSION
+        http-only: true
+        same-site: lax
+        secure: ${XPERIENCE_COOKIE_SECURE:true}
+
+app:
+  almacenamiento:
+    directorio: ${XPERIENCE_ALMACEN:./data/archivos}
+  respuestas:
+    # Clave del HMAC con el que se guardan las respuestas aceptadas. Obligatoria fuera de dev.
+    clave-hmac: ${XPERIENCE_CLAVE_HMAC}
