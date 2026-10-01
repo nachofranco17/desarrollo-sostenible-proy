@@ -28,23 +28,21 @@ class PuntoControlAcceso implements HandlerInterceptor {
 		}
 		Sujeto sujeto = resolutorSujeto.resolver(request);
 		if (!(handler instanceof HandlerMethod metodo)) {
-			return denegar(request, response, sujeto, null);
+			throw denegar(request, sujeto, null);
 		}
 		RequiereAccion requiere = metodo.getMethodAnnotation(RequiereAccion.class);
 		if (requiere == null) {
-			return denegar(request, response, sujeto, null);
+			throw denegar(request, sujeto, null);
 		}
 		if (!evaluador.puedeInvocar(sujeto, requiere.value())) {
-			return denegar(request, response, sujeto, requiere.value());
+			throw denegar(request, sujeto, requiere.value());
 		}
 		return true;
 	}
 
-	private boolean denegar(HttpServletRequest request, HttpServletResponse response, Sujeto sujeto, String accion)
-		throws Exception {
+	private AccesoDenegadoException denegar(HttpServletRequest request, Sujeto sujeto, String accion) {
 		registroAccesos.denegado(sujeto, accion, request.getMethod() + " " + request.getRequestURI());
-		response.sendError(HttpServletResponse.SC_FORBIDDEN);
-		return false;
+		return new AccesoDenegadoException();
 	}
 
 }
