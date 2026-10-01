@@ -31,6 +31,27 @@ La confirmación dura cinco minutos y pertenece a esa sesión, usuario, empresa 
 
 ## Pruebas
 
+### RS7: cuentas nuevas y asignación explícita
+
+La protección ya forma parte del registro, RF7 y el evaluador de política. Las pruebas `rs7*` de `StaffInvitationIntegrationTest` verifican los tres escenarios usando cuentas creadas por HTTP y enlaces de invitación reales (con entrega de correo simulada):
+
+1. **Talento recién registrado:** puede leer y editar su perfil. El evaluador permite catálogo, inscripción y postulación solo sobre recursos publicados y rechaza perfiles ajenos y operaciones sobre recursos de la empresa. Las rutas reales de gestión de cursos, listado de staff, invitación y asignación de roles devuelven 403.
+2. **Invitado que aceptó, sin rol:** la membresía queda activa con rol nulo. No recibe ningún permiso del catálogo, no puede iniciar sesión y las operaciones de empresa por HTTP devuelven 401. Aceptar la invitación no equivale a asignar un rol.
+3. **Asignación de Reclutador:** el Administrador se reautentica y asigna el rol por HTTP. Recién entonces el invitado puede ingresar. Se verifican los permisos de reclutamiento dentro de E1, el rechazo sobre E2 y la denegación de gestión de cursos y staff.
+
+La matriz vigente también incluye acciones propias del Talento como consultar sus inscripciones y postulaciones o gestionar su currículum. Esas acciones no conceden acceso a recursos de la empresa ni a datos de otros Talentos. RS7 se comprueba manteniendo esa matriz; no se modifica el catálogo de permisos con estas pruebas.
+
+Catálogo, inscripciones, ofertas y postulaciones todavía no tienen rutas de negocio implementadas: sus condiciones se prueban directamente sobre el evaluador. Perfil, cursos y staff se verifican además por HTTP. No se agregan módulos de negocio para probar RS7.
+
+Para ejecutar únicamente los tres casos de aceptación:
+
+```powershell
+cd backend
+.\mvnw.cmd '-Dtest=StaffInvitationIntegrationTest#rs7*' test
+```
+
+### Suite completa
+
 ```powershell
 cd backend
 .\mvnw.cmd test
