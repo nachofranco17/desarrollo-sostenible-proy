@@ -10,7 +10,7 @@ La fuente de verdad es [docs/seguridad/modelo-autorizacion.md](seguridad/modelo-
 - Asignar Reclutador habilita sus operaciones sobre su empresa. También puede consultar catálogo y ofertas publicados de otras empresas, como exige la matriz; no puede gestionar esos recursos ajenos.
 - Los permisos se vuelven a consultar en solicitudes posteriores. Reasignar un rol no acumula los permisos del anterior; dar de baja la cuenta/membresía o dejarla sin rol revoca el acceso de sesiones existentes.
 
-El catálogo de permisos no implementa módulos de negocio. Cursos, perfiles editables, inscripciones, postulaciones e invitaciones siguen pendientes. Las decisiones sobre publicación/propiedad se prueban con atributos del servidor. Los alcances INSCRIPTO y POSTULANTE se deniegan hasta que existan sus relaciones y consultas reales; no se sustituyen por banderas que pueda enviar el cliente.
+El catálogo de permisos no implementa módulos de negocio. Ya existen cursos, perfiles editables e invitaciones del staff; ofertas, inscripciones y postulaciones siguen pendientes. Las decisiones sobre publicación/propiedad de módulos pendientes se prueban con atributos del servidor. Los alcances INSCRIPTO y POSTULANTE se deniegan hasta que existan sus relaciones y consultas reales; no se sustituyen por banderas que pueda enviar el cliente.
 
 ## Cambio de rol con reautenticación
 

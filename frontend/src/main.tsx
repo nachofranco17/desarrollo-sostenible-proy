@@ -4,6 +4,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate 
 import { api, post, patch, ApiError, type Account, type TalentProfile } from './api';
 import { CourseEditor, CourseList, NewCourse } from './gestion';
 import './styles.css';
+import { StaffPage, AcceptInvitation } from './staff';
 
 type AuthState = { account: Account | null; loading: boolean; error: string; refresh: () => Promise<void>; clear: () => void };
 const Auth = createContext<AuthState>(null!);
@@ -50,6 +51,8 @@ function App() {
           <Route path="/mi-cuenta" element={auth.account ? <MyAccount account={auth.account} /> : <Navigate to="/ingresar" replace />} />
           <Route path="/perfil" element={auth.account?.rol === 'TALENTO' ? <TalentProfilePage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
           <Route path="/gestion" element={courses(<CourseList />)} />
+          <Route path="/invitacion" element={<AcceptInvitation />} />
+          <Route path="/staff" element={auth.account?.rol === 'ADMIN' ? <StaffPage currentUserId={auth.account.id} /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
           <Route path="/gestion/nuevo" element={courses(<NewCourse />)} />
           <Route path="/gestion/:id" element={courses(<CourseEditor />)} />
           <Route path="*" element={<><h2>Página no encontrada</h2><Link to="/">Volver al inicio</Link></>} />
@@ -134,6 +137,7 @@ function MyAccount({ account }: { account: Account }) {
     {message && <p className="notice" role="status">{message}</p>}{error && <p className="notice error" role="alert">{error}</p>}
     {account.rol === 'TALENTO' && <Link className="button-link" to="/perfil">Ver mi perfil</Link>}
     {canManageCourses(account) && <Link className="button-link" to="/gestion">Gestionar cursos y proyectos</Link>}
+    {account.rol === 'ADMIN' && <Link className="button-link" to="/staff">Gestionar staff</Link>}
     <button disabled={busy} onClick={verify}>Verificar acceso</button><button disabled={busy} className="secondary" onClick={logout}>Cerrar sesión</button>
   </>;
 }

@@ -2,7 +2,7 @@
 
 Plataforma de formación y empleabilidad. Esta entrega implementa el registro de Talentos y el inicio/cierre de sesión para cuentas habilitadas de Talento, Administrador, Reclutador y Editor.
 
-El registro público crea **únicamente Talentos**. Las empresas y su primer Administrador se crean mediante un script de desarrollo. No hay formulario ni endpoint público de alta de empresas. El envío y la aceptación de invitaciones del resto del staff siguen pendientes en **RF7**. Conforme a `docs/seguridad`, el staff necesita una membresía activa y un rol asignado para iniciar sesión y operar. El Administrador debe reautenticarse antes de asignar roles.
+El registro público crea **únicamente Talentos**. Las empresas y su primer Administrador se crean mediante un script de desarrollo. No hay formulario ni endpoint público de alta de empresas. El Administrador puede invitar al resto del staff y asignar sus roles desde **Mi cuenta → Gestionar staff** ([RF7: guía de prueba y correo](docs/sprint1/rf7-invitaciones-staff.md)). Conforme a `docs/seguridad`, el staff necesita una membresía activa y un rol asignado para iniciar sesión y operar. El Administrador debe reautenticarse antes de asignar roles.
 
 ## Ejecutar en Windows sin Docker
 
@@ -102,6 +102,6 @@ Fuera del perfil local, las cookies requieren HTTPS por defecto. En un despliegu
 - Cambio de roles: reautenticación del Administrador mediante `POST /api/auth/reauthenticate`, válida por cinco minutos y vinculada a su sesión. Se rechazan cambios sobre la propia membresía y sobre otras empresas.
 - Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. Su implementación predeterminada no persiste eventos mientras R18/R19 estén pendientes, tal como permite el diseño.
 
-La autorización implementada cubre los recursos existentes de cuenta y membresía. El catálogo completo de permisos está cargado, pero los módulos de cursos, perfiles editables, postulaciones, recuperación/verificación de correo e invitaciones RF7 siguen pendientes. Los alcances que requieren inscripciones o postulaciones reales se deniegan hasta implementar esos recursos y sus consultas. No se agregan endpoints ficticios ni se aceptan relaciones de propiedad enviadas por el cliente.
+El catálogo completo de permisos está cargado. Hay módulos de perfiles, gestión de cursos y proyectos e invitaciones del staff. Siguen pendientes ofertas, postulaciones, inscripciones y recuperación/verificación de correo de Talentos. Los alcances que requieren inscripciones o postulaciones reales se deniegan hasta implementar esos recursos y sus consultas. No se agregan endpoints ficticios ni se aceptan relaciones de propiedad enviadas por el cliente.
 
 Ver [contrato HTTP y decisiones de alcance](docs/autenticacion.md) y [permisos mínimos y sus pruebas](docs/permisos-minimos.md).

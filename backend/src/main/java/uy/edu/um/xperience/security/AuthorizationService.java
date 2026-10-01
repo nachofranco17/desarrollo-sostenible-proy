@@ -65,6 +65,10 @@ public class AuthorizationService implements EvaluadorPolitica {
         try {
             var grants = permisos(s, action);
             if (grants.isEmpty() || (sensitive(action) && !reauthentication.valid(s))) return deny();
+            if (type == Membresia.class && "staff.ver".equals(action) && s.empresaId() != null
+                    && grants.stream().anyMatch(p -> "ORG".equals(p.alcance))) {
+                return (root, query, cb) -> cb.equal(root.get("empresaId"), s.empresaId());
+            }
             if (type == Usuario.class && Set.of("cuenta.gestionar", "sesion.reautenticar").contains(action)
                     && grants.stream().anyMatch(p -> "PROPIO".equals(p.alcance))) {
                 return (root, query, cb) -> cb.and(cb.equal(root.get("id"), s.usuarioId()), cb.isTrue(root.get("activo")));
@@ -85,6 +89,7 @@ public class AuthorizationService implements EvaluadorPolitica {
 
     @Override public Set<String> camposLegibles(Sujeto s, String action, Object resource) {
         if (!autorizar(s, action, resource)) return Set.of();
+        if ("staff.ver".equals(action)) return Set.of("usuarioId", "empresaId", "correo", "nombre", "apellido", "rol", "estado");
         if ("cuenta.gestionar".equals(action)) return Set.of("id", "correo", "nombre", "apellido", "tipoCuenta", "rol", "empresaId", "empresaNombre");
         return Set.of();
     }
@@ -95,6 +100,7 @@ public class AuthorizationService implements EvaluadorPolitica {
             case "sesion.iniciar" -> Set.of("correo", "password");
             case "sesion.reautenticar" -> Set.of("password");
             case "staff.cambiar_rol" -> Set.of("rol");
+            case "staff.invitar" -> Set.of("correo");
             default -> Set.of();
         };
     }

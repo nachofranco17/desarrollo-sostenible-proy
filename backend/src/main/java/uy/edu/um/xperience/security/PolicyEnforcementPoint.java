@@ -17,9 +17,11 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
     private final ObjectProvider<RequestMappingHandlerMapping> mapping;
     private final Sujetos subjects;
     private final EvaluadorPolitica policy;
+    private final InvitationTokens invitations;
     public PolicyEnforcementPoint(@Qualifier("requestMappingHandlerMapping") ObjectProvider<RequestMappingHandlerMapping> mapping,
-                                  Sujetos subjects, EvaluadorPolitica policy) {
+                                  Sujetos subjects, EvaluadorPolitica policy, InvitationTokens invitations) {
         this.mapping = mapping; this.subjects = subjects; this.policy = policy;
+        this.invitations = invitations;
     }
     @Override public AuthorizationDecision check(Supplier<Authentication> authentication, RequestAuthorizationContext context) {
         HttpServletRequest request = context.getRequest();
@@ -30,6 +32,9 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
             var action = handler.getMethodAnnotation(RequiereAccion.class);
             if (action == null) return new AuthorizationDecision(false);
             request.setAttribute(Denegaciones.ACTION, action.value());
+            if ("invitacion.aceptar".equals(action.value())) {
+                return new AuthorizationDecision(invitations.valid(request.getHeader(InvitationTokens.HEADER)));
+            }
             return new AuthorizationDecision(policy.puedeInvocar(subjects.resolve(authentication.get()), action.value()));
         } catch (Exception error) { return new AuthorizationDecision(false); }
     }

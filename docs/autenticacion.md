@@ -4,7 +4,7 @@
 
 Se toma el informe `InformeProyecto.pdf` como contexto del proyecto XPerience. Para el alta de cuentas prevalece el requisito actualizado: **registro público de Talentos**, alta de empresas/Administradores por script y resto del staff por invitación RF7. No se implementa el registro público de empresas mencionado en la versión anterior del informe.
 
-El envío y la aceptación de invitaciones de RF7 siguen pendientes. Las pruebas crean membresías que representan una invitación aceptada. El staff requiere cuenta activa, membresía activa y rol explícitamente asignado para iniciar sesión y acceder a su cuenta. Esto reemplaza la excepción anterior para staff sin rol y sigue el modelo de `docs/seguridad`. Ver [permisos mínimos](permisos-minimos.md).
+El envío y la aceptación de invitaciones están implementados en [RF7](sprint1/rf7-invitaciones-staff.md). El staff requiere cuenta activa, membresía activa y rol explícitamente asignado para iniciar sesión y acceder a su cuenta. Esto reemplaza la excepción anterior para staff sin rol y sigue el modelo de `docs/seguridad`. Ver [permisos mínimos](permisos-minimos.md).
 
 ## Contrato HTTP
 
