@@ -13,10 +13,12 @@ class PuntoControlAcceso implements HandlerInterceptor {
 
 	private final EvaluadorPolitica evaluador;
 	private final ResolutorSujeto resolutorSujeto;
+	private final RegistroAccesos registroAccesos;
 
-	PuntoControlAcceso(EvaluadorPolitica evaluador, ResolutorSujeto resolutorSujeto) {
+	PuntoControlAcceso(EvaluadorPolitica evaluador, ResolutorSujeto resolutorSujeto, RegistroAccesos registroAccesos) {
 		this.evaluador = evaluador;
 		this.resolutorSujeto = resolutorSujeto;
+		this.registroAccesos = registroAccesos;
 	}
 
 	@Override
@@ -24,22 +26,23 @@ class PuntoControlAcceso implements HandlerInterceptor {
 		if (request.getDispatcherType() == DispatcherType.ERROR) {
 			return true;
 		}
+		Sujeto sujeto = resolutorSujeto.resolver(request);
 		if (!(handler instanceof HandlerMethod metodo)) {
-			return denegar(response);
+			return denegar(request, response, sujeto, null);
 		}
 		RequiereAccion requiere = metodo.getMethodAnnotation(RequiereAccion.class);
-		
 		if (requiere == null) {
-			return denegar(response);
+			return denegar(request, response, sujeto, null);
 		}
-		Sujeto sujeto = resolutorSujeto.resolver(request);
 		if (!evaluador.puedeInvocar(sujeto, requiere.value())) {
-			return denegar(response);
+			return denegar(request, response, sujeto, requiere.value());
 		}
 		return true;
 	}
 
-	private boolean denegar(HttpServletResponse response) throws Exception {
+	private boolean denegar(HttpServletRequest request, HttpServletResponse response, Sujeto sujeto, String accion)
+		throws Exception {
+		registroAccesos.denegado(sujeto, accion, request.getMethod() + " " + request.getRequestURI());
 		response.sendError(HttpServletResponse.SC_FORBIDDEN);
 		return false;
 	}
