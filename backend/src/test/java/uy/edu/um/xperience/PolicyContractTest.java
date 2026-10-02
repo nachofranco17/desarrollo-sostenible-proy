@@ -87,6 +87,57 @@ class PolicyContractTest {
             .andExpect(status().isBadRequest());
         verify(registry).denegado(eq(Sujeto.visitante()), eq("cuenta.registrar"), eq("/api/auth/register"));
     }
+
+    // RS12: un campo protegido rechaza toda la actualización
+    // y el intento queda registrado en la auditoría.
+    @Test
+    void forbiddenProfileFieldsRejectWholeUpdateAndAreReported()
+            throws Exception {
+        String email = UUID.randomUUID() + "@example.test";
+
+        mvc.perform(
+            post("/api/auth/register")
+                .with(csrf())
+                .contentType("application/json")
+                .content("""
+                    {
+                      "correo": "%s",
+                      "nombre": "Ana",
+                      "apellido": "Prueba",
+                      "password": "una frase suficientemente larga"
+                    }
+                    """.formatted(email))
+        ).andExpect(status().isAccepted());
+
+        var account = accounts.byEmail(email).orElseThrow();
+        var subject = Sujeto.from(account);
+
+        clearInvocations(registry);
+
+        mvc.perform(
+            patch("/api/profile/me")
+                .with(user(account.id().toString()))
+                .with(csrf())
+                .contentType("application/json")
+                .content("""
+                    {
+                      "nombre": "NoDebeGuardarse",
+                      "rol": "ADMIN"
+                    }
+                    """)
+        ).andExpect(status().isBadRequest());
+
+        assertThat(
+            accounts.byEmail(email).orElseThrow().nombre()
+        ).isEqualTo("Ana");
+
+        verify(registry).denegado(
+            eq(subject),
+            eq("perfil.gestionar"),
+            eq("/api/profile/me")
+        );
+    }
+
     @Test void ownAccountQueriesCannotReturnAnotherAccountAndFieldsNeverExposeSecrets() {
         var first = admin(); var second = admin();
         var scope = policy.filtrar(first, "cuenta.gestionar", Usuario.class);
