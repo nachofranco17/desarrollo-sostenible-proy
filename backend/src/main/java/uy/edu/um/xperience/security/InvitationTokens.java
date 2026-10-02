@@ -7,6 +7,8 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ import uy.edu.um.xperience.persistence.*;
 @Component
 public class InvitationTokens {
     public static final String HEADER = "X-Invitation-Token";
+    private static final Logger log = LoggerFactory.getLogger(InvitationTokens.class);
     private final Membresias memberships;
     private final SecureRandom random = new SecureRandom();
     public InvitationTokens(Membresias memberships) { this.memberships = memberships; }
@@ -41,6 +44,10 @@ public class InvitationTokens {
     @Transactional(readOnly = true)
     public boolean valid(String token) {
         try { return memberships.exists(filter(token)); }
-        catch (RuntimeException error) { return false; }
+        catch (RuntimeException error) {
+            // Never log the token itself.
+            log.error("Fallo la validacion de un token de invitacion; se deniega", error);
+            return false;
+        }
     }
 }
