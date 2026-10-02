@@ -2,6 +2,8 @@ package uy.edu.um.xperience.security;
 
 import jakarta.servlet.http.*;
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class Denegaciones {
     public static final String ACTION = Denegaciones.class.getName() + ".action";
+    private static final Logger log = LoggerFactory.getLogger(Denegaciones.class);
     private final Sujetos subjects;
     private final RegistroAccesos registry;
     private final AuthorizationService policy;
@@ -20,7 +23,11 @@ public class Denegaciones {
         try { subject = subjects.current(); } catch (RuntimeException error) { subject = new Sujeto(null, null, null, null); }
         String action = request.getAttribute(ACTION) instanceof String a ? a : "NO_DECLARADA";
         // Never send passwords, request bodies, invitation tokens or query strings to the audit interface.
-        registry.denegado(subject, action, request.getRequestURI());
+        try { registry.denegado(subject, action, request.getRequestURI()); }
+        catch (RuntimeException error) {
+            // A failing access log must never turn a denial into something else; the denial still happens.
+            log.error("No se pudo registrar la denegacion de {} sobre {}", action, request.getRequestURI(), error);
+        }
     }
     public void responder(HttpServletRequest request, HttpServletResponse response, int status) throws IOException {
         try { registrar(request); } finally {

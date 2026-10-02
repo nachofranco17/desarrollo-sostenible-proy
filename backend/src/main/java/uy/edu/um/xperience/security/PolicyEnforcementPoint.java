@@ -2,6 +2,8 @@ package uy.edu.um.xperience.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authorization.*;
@@ -14,6 +16,7 @@ import org.springframework.web.util.ServletRequestPathUtils;
 
 @Component
 public class PolicyEnforcementPoint implements AuthorizationManager<RequestAuthorizationContext> {
+    private static final Logger log = LoggerFactory.getLogger(PolicyEnforcementPoint.class);
     private final ObjectProvider<RequestMappingHandlerMapping> mapping;
     private final Sujetos subjects;
     private final EvaluadorPolitica policy;
@@ -36,6 +39,9 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
                 return new AuthorizationDecision(invitations.valid(request.getHeader(InvitationTokens.HEADER)));
             }
             return new AuthorizationDecision(policy.puedeInvocar(subjects.resolve(authentication.get()), action.value()));
-        } catch (Exception error) { return new AuthorizationDecision(false); }
+        } catch (Exception error) {
+            log.error("Fallo el PEP evaluando {}; se deniega", request.getRequestURI(), error);
+            return new AuthorizationDecision(false);
+        }
     }
 }

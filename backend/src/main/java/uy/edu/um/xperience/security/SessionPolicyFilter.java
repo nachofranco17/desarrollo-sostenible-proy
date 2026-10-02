@@ -5,11 +5,14 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Covers framework endpoints that never reach an MVC handler. Runs before LogoutFilter. */
 public class SessionPolicyFilter extends OncePerRequestFilter {
+    private static final Logger log = LoggerFactory.getLogger(SessionPolicyFilter.class);
     private final Sujetos subjects;
     private final EvaluadorPolitica policy;
     private final Denegaciones denials;
@@ -39,7 +42,10 @@ public class SessionPolicyFilter extends OncePerRequestFilter {
                 Sujeto subject = subjects.current();
                 Object resource = "sesion.iniciar".equals(action) ? AuthorizationService.Global.INSTANCE : ResourceAccess.own(subject.usuarioId());
                 allowed = policy.puedeInvocar(subject, action) && policy.autorizar(subject, action, resource);
-            } catch (RuntimeException error) { allowed = false; }
+            } catch (RuntimeException error) {
+                log.error("Fallo la evaluacion de {}; se deniega", action, error);
+                allowed = false;
+            }
             if (!allowed) { denials.responder(request, response); return; }
         }
         chain.doFilter(request, response);
