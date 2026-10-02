@@ -1,9 +1,7 @@
 package uy.edu.um.xperience.profile;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.security.Principal;
 import uy.edu.um.xperience.security.RequiereAccion;
-import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,13 +16,13 @@ public class ProfileController {
 
     @RequiereAccion("perfil.gestionar")
     @GetMapping("/me")
-    public ProfileView me(Principal principal) {
-        return profiles.getOwn(UUID.fromString(principal.getName()));
+    public ProfileView me() {
+        return profiles.getOwn();
     }
 
     @RequiereAccion("perfil.gestionar")
     @PatchMapping(value = "/me", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ProfileView update(@RequestBody JsonNode body, Principal principal) {
-        return profiles.updateOwn(UUID.fromString(principal.getName()), ProfileUpdateParser.parse(body));
+    public ProfileView update(@RequestBody JsonNode body) {
+        return profiles.updateOwn(ProfileUpdateParser.parse(body));
     }
 }

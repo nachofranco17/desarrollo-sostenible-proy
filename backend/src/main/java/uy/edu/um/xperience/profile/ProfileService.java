@@ -11,32 +11,43 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import uy.edu.um.xperience.account.Account;
 import uy.edu.um.xperience.account.AccountRepository;
+import uy.edu.um.xperience.security.EvaluadorPolitica;
+import uy.edu.um.xperience.security.Sujeto;
+import uy.edu.um.xperience.security.Sujetos;
 
+/**
+ * Perfil del Talento (RF2). El PEP ya comprobó perfil.gestionar a nivel de función; acá se
+ * resuelve la instancia (RS11): solo el perfil del sujeto de la sesión, revalidado con el
+ * evaluador. No hay búsqueda por id ajeno ni ownership tomado del body.
+ */
 @Service
 public class ProfileService {
     private final AccountRepository accounts;
     private final ProfileRepository profiles;
     private final PasswordEncoder passwords;
+    private final Sujetos subjects;
+    private final EvaluadorPolitica policy;
 
-    public ProfileService(AccountRepository accounts, ProfileRepository profiles, PasswordEncoder passwords) {
+    public ProfileService(AccountRepository accounts, ProfileRepository profiles, PasswordEncoder passwords,
+                          Sujetos subjects, EvaluadorPolitica policy) {
         this.accounts = accounts;
         this.profiles = profiles;
         this.passwords = passwords;
+        this.subjects = subjects;
+        this.policy = policy;
     }
 
     @Transactional(readOnly = true)
-    public ProfileView getOwn(UUID usuarioId) {
-        Account account = requireActiveTalent(usuarioId);
-        TalentProfile profile = profiles.byUsuarioId(account.id())
-            .orElseThrow(() -> new AccessDeniedException("Acceso denegado"));
-        return ProfileView.from(profile, derivedCourseProgress(), derivedCompletedProjects(), derivedAchievements());
+    public ProfileView getOwn() {
+        return ProfileView.from(requireOwnProfile(), derivedCourseProgress(), derivedCompletedProjects(),
+            derivedAchievements());
     }
 
     @Transactional
-    public ProfileView updateOwn(UUID usuarioId, ProfileUpdate input) {
-        Account account = requireActiveTalent(usuarioId);
-        TalentProfile current = profiles.byUsuarioId(account.id())
-            .orElseThrow(() -> new AccessDeniedException("Acceso denegado"));
+    public ProfileView updateOwn(ProfileUpdate input) {
+        Sujeto subject = subjects.current();
+        TalentProfile current = requireOwnProfile(subject);
+        Account account = requireActiveTalent(subject.usuarioId());
 
         if (input.wantsPasswordChange() && !input.hasCompletePasswordChange()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -81,15 +92,33 @@ public class ProfileService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "No se pudo guardar el perfil con esos datos.");
         }
-        return getOwn(account.id());
+        return getOwn();
+    }
+
+    private TalentProfile requireOwnProfile() {
+        return requireOwnProfile(subjects.current());
+    }
+
+    private TalentProfile requireOwnProfile(Sujeto subject) {
+        if (subject.usuarioId() == null) {
+            throw denied();
+        }
+        requireActiveTalent(subject.usuarioId());
+        // Consulta acotada al usuario de la sesión: no se busca un perfil por id de request (RS11).
+        TalentProfile profile = profiles.byUsuarioId(subject.usuarioId())
+            .orElseThrow(ProfileService::denied);
+        if (!policy.autorizar(subject, "perfil.gestionar", profile)) {
+            throw denied();
+        }
+        return profile;
     }
 
     private Account requireActiveTalent(UUID usuarioId) {
         Account account = accounts.byId(usuarioId)
             .filter(Account::canSignIn)
-            .orElseThrow(() -> new AccessDeniedException("Acceso denegado"));
+            .orElseThrow(ProfileService::denied);
         if (!"TALENTO".equals(account.tipoCuenta())) {
-            throw new AccessDeniedException("Acceso denegado");
+            throw denied();
         }
         return account;
     }
@@ -104,5 +133,9 @@ public class ProfileService {
 
     private List<ProfileView.AchievementItem> derivedAchievements() {
         return List.of();
+    }
+
+    private static AccessDeniedException denied() {
+        return new AccessDeniedException("Acceso denegado");
     }
 }

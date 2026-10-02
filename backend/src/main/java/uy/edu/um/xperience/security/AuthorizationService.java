@@ -4,7 +4,9 @@ import java.util.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import uy.edu.um.xperience.account.*;
+import uy.edu.um.xperience.course.Course;
 import uy.edu.um.xperience.persistence.*;
+import uy.edu.um.xperience.profile.TalentProfile;
 
 @Service
 public class AuthorizationService implements EvaluadorPolitica {
@@ -39,6 +41,12 @@ public class AuthorizationService implements EvaluadorPolitica {
         if (resource instanceof Usuario u) return ResourceAccess.own(u.id);
         if (resource instanceof Membresia m) return new ResourceAccess(m.usuarioId, m.empresaId, false);
         if (resource instanceof TransicionPostulacion p) return ResourceAccess.company(p.empresaId());
+        if (resource instanceof Course c) {
+            return new ResourceAccess(null, c.empresaId(), c.isPublicado());
+        }
+        if (resource instanceof TalentProfile p) {
+            return ResourceAccess.own(p.usuarioId());
+        }
         return null;
     }
     @Override public boolean autorizar(Sujeto s, String action, Object resource) {
