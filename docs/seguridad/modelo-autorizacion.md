@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.4 (02/10/2026)
+Versión: 1.5 (02/10/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -64,6 +64,17 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 | `staff.ver` | Ver miembros y su rol | — | — | ORG | — | — |
 
 **Caso especial: `invitacion.aceptar`.** No tiene filas en la tabla porque el sujeto no tiene sesión ni rol. El PEP la trata como una acción propia cuya única condición es que el token de invitación sea válido y no haya expirado.
+
+### Funcionalidades nuevas (R8)
+
+Toda funcionalidad nueva queda inaccesible hasta que se definan sus permisos de forma explícita. Para habilitarla:
+
+1. Agregar la acción a la tabla de esta sección, con el alcance de cada rol. Una acción que solo existe en el código no se puede usar.
+2. Cargar sus permisos con una migración nueva de Flyway. Una migración ya aplicada no se edita.
+3. Anotar cada endpoint con `@RequiereAccion("<acción>")`. Un endpoint sin la anotación se deniega siempre.
+4. Resolver el nivel de dato en el handler con `autorizar` o `filtrar` (sección 6).
+
+Las pruebas automáticas verifican esta convención. `EndpointConventionTest` falla si algún endpoint no tiene la anotación o declara una acción que no está en esta tabla, y `PolicyContractTest` falla si los permisos cargados en la base no coinciden con ella. La única excepción es el controller de errores de Spring Boot (`/error`), que solo atiende el despacho interno de error (sección 6).
 
 ## 4. Condiciones adicionales
 
