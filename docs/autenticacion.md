@@ -55,7 +55,7 @@ Las lecturas de negocio usan Spring Data JPA con Specifications del evaluador, i
 
 El PEP exige `@RequiereAccion` y consulta `puedeInvocar` antes del handler. Registro usa `cuenta.registrar`, lectura de cuenta usa `cuenta.gestionar`, reautenticación usa `sesion.reautenticar` y cambio de rol usa `staff.cambiar_rol`. Un filtro aplica `sesion.iniciar` y `sesion.cerrar` antes de los filtros de login/logout de Spring. Una ruta sin acción declarada o sin permiso se deniega; los errores del evaluador tampoco conceden acceso.
 
-`GET /api/auth/csrf` es infraestructura de Spring Security implementada en el filtro, no un controller de negocio sin anotación. Solo entrega el token antifalsificación de la sesión. `/error` y los despachos de error están habilitados sin detalles internos. CSRF y `anyRequest().denyAll()` se mantienen.
+`GET /api/auth/csrf` es infraestructura de Spring Security implementada en el filtro, no un controller de negocio sin anotación. Solo entrega el token antifalsificación de la sesión. Solo los despachos internos de error están habilitados, sin detalles internos; un pedido directo a `/error` se deniega. CSRF y `anyRequest().denyAll()` se mantienen.
 
 La prueba de reautenticación se guarda del lado del servidor, vinculada al usuario, empresa y rol de la sesión. Vence a los cinco minutos (`security.reauthentication-validity`) y una contraseña incorrecta invalida la confirmación previa. Las reglas de reautenticación y exclusión de la propia membresía están en el evaluador. Las denegaciones del PEP, filtros, handlers y campos inválidos se comunican a `RegistroAccesos`, cuyo almacenamiento definitivo corresponde a R18/R19.
 

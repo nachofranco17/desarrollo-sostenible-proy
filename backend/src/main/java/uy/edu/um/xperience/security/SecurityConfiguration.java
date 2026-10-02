@@ -31,7 +31,6 @@ public class SecurityConfiguration {
         // CSRF stays enabled, including registration, login, reauthentication and logout.
         http.authorizeHttpRequests(auth -> auth
             .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-            .requestMatchers("/error").permitAll()
             .requestMatchers("/api/**").access(pep)
             .anyRequest().denyAll());
         http.formLogin(login -> login.loginProcessingUrl("/api/auth/login")

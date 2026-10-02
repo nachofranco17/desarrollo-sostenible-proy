@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.2 (28/09/2026)
+Versión: 1.3 (02/10/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -134,13 +134,16 @@ public @interface RequiereAccion {
 public void completar(@PathVariable UUID id) { ... }
 ```
 
-El PEP (R5) lee la anotación antes de ejecutar el handler:
+El PEP (R5) es un `AuthorizationManager` de Spring Security aplicado a todas las rutas de `/api`. Antes de que se ejecute el handler, busca cuál va a atender la solicitud y lee su anotación:
 
-- Si el método no la tiene, rechaza la solicitud (R8).
+- Si no hay handler o no es un método de controller, rechaza la solicitud.
+- Si el método no tiene la anotación, rechaza (R8).
+- Si la acción es `invitacion.aceptar`, solo deja pasar con un token de invitación válido.
 - Si `puedeInvocar` devuelve `false`, rechaza.
+- Si ocurre cualquier error durante la evaluación, rechaza (R6).
 - En cualquier otro caso, deja pasar la solicitud al handler, que resuelve el nivel de dato.
 
-Toda denegación, sea del PEP o del handler, se informa a una interfaz de registro que implementa R18. Mientras R18 no esté hecho, la implementación no hace nada, pero el PEP ya la invoca:
+Los handlers deniegan lanzando `AccessDeniedException`. Toda denegación, sea del PEP, de un filtro o de un handler, termina en un único componente que arma la respuesta: 401 si no hay sesión y 403 si la hay, siempre con el mismo mensaje genérico. Ese componente además la informa a una interfaz de registro que implementa R18. Mientras R18 no esté hecho, la implementación no hace nada, pero toda denegación ya la invoca:
 
 ```java
 public interface RegistroAccesos {
@@ -148,10 +151,12 @@ public interface RegistroAccesos {
 }
 ```
 
-Casos que no pasan por un controller y el PEP debe contemplar explícitamente:
+Casos que no pasan por un controller propio y se contemplan explícitamente:
 
-- **Login y logout.** Si se usa el login provisto por Spring Security, lo procesa un filtro antes de llegar a cualquier controller, por lo que la anotación no lo cubre. El PEP lo asocia a `sesion.iniciar` y `sesion.cerrar`.
-- **Endpoint `/error` de Spring Boot.** Con `denyAll()` queda bloqueado y los errores terminan como 403 genéricos. Se habilita explícitamente, sin exponer detalles internos.
+- **Login y logout.** Los procesan los filtros de Spring Security, antes de llegar a cualquier controller, por lo que la anotación no los cubre. Un filtro propio que se ejecuta antes que ellos los asocia a `sesion.iniciar` y `sesion.cerrar` y consulta al mismo evaluador que el PEP.
+- **Token CSRF (`GET /api/auth/csrf`).** Lo entrega ese mismo filtro sin pasar por el PEP. Es infraestructura de Spring Security y solo devuelve el token antifalsificación de la sesión.
+- **Endpoint `/error` de Spring Boot.** Lo atiende un controller de Spring Boot sin la anotación. Solo se permite el despacho interno de error (`DispatcherType.ERROR`), que escribe la respuesta de un error ya ocurrido sin deshacer la denegación. Si el cliente pide `/error` directamente, se rechaza. La respuesta no incluye mensajes ni trazas (`server.error.*`).
+- **Rutas fuera de `/api`.** Se rechazan con `denyAll()` antes de llegar al PEP, aunque el handler tenga la anotación.
 
 ### Uso en el handler
 
@@ -160,7 +165,7 @@ Toda lectura pasa por `filtrar`, **incluidas las búsquedas por id**:
 ```java
 Curso curso = cursos.findOne(
         where(idIgual(id)).and(evaluador.filtrar(sujeto, "curso.gestionar", Curso.class)))
-    .orElseThrow(AccesoDenegadoException::new);
+    .orElseThrow(() -> new AccessDeniedException("Acceso denegado"));
 ```
 
 Así, "no existe" y "no tiene permiso" producen la misma respuesta de prohibido, sin revelar la existencia del recurso (R11).
@@ -213,10 +218,13 @@ Todos los identificadores son UUID (R13). Las entidades vinculadas a una empresa
 | Pruebas | JUnit 5 + MockMvc + Testcontainers | R20 |
 | Frontend | React + TypeScript, servido por su propio servidor (Vite en desarrollo). El backend expone solo la API | — |
 
-Configuración obligatoria del framework. R22 quedó fuera del alcance como requerimiento independiente, pero estas dos reglas se mantienen y se verifican con las pruebas de R20:
+Configuración obligatoria del framework. R22 quedó fuera del alcance como requerimiento independiente, pero estas reglas se mantienen y se verifican con las pruebas de R20:
 
 - Spring Security no deniega todo por defecto. La configuración debe cerrar con `anyRequest().denyAll()`.
 - La protección CSRF no se desactiva, porque la sesión viaja en una cookie.
+- Las rutas de `/api` se delegan al PEP (`access(pep)`). No se agregan reglas por rol en Spring Security, para que el PEP sea el único punto que conoce las acciones (R5).
+- `/error` solo se permite para el despacho interno de error, nunca para pedidos directos.
+- La caché de solicitudes de Spring Security (`requestCache`) está desactivada, para que una solicitud denegada no cree una sesión en el servidor.
 
 En desarrollo, el servidor de Vite reenvía las llamadas a `/api` hacia el backend (`server.proxy`). Así el navegador ve un único origen, la cookie de sesión funciona sin configurar CORS y `SameSite` puede quedar en `Strict` o `Lax`.
 
