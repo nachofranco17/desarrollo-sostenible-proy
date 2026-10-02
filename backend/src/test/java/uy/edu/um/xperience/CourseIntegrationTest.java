@@ -189,7 +189,9 @@ class CourseIntegrationTest {
 
     @Test
     void writesRejectFieldsOutsideTheFormWithoutApplyingAnything() throws Exception {
-        var editor = member(company(), "EDITOR");
+        UUID company = company();
+        UUID otherCompany = company();
+        var editor = member(company, "EDITOR");
         UUID id = create(editor, "CURSO", "Original");
         var attempt = new HashMap<String, Object>(json.readValue(data("Cambiado"), Map.class));
         attempt.put("estado", "PUBLICADO");
@@ -197,27 +199,67 @@ class CourseIntegrationTest {
         assertThat(jdbc.queryForMap("SELECT titulo, estado FROM curso WHERE id = ?", id))
             .containsEntry("titulo", "Original").containsEntry("estado", "BORRADOR");
 
+        attempt.remove("estado");
+        attempt.put("empresaId", otherCompany.toString());
+        assertThat(editor.send("PUT", BASE + "/" + id, json.writeValueAsString(attempt)).statusCode()).isEqualTo(400);
+        assertThat(jdbc.queryForMap("SELECT titulo, empresa_id FROM curso WHERE id = ?", id))
+            .containsEntry("titulo", "Original").containsEntry("empresa_id", company);
+
         var other = new HashMap<String, Object>(json.readValue(course("CURSO", "Plantado"), Map.class));
-        other.put("empresaId", UUID.randomUUID().toString());
+        other.put("empresaId", otherCompany.toString());
         assertThat(editor.send("POST", BASE, json.writeValueAsString(other)).statusCode()).isEqualTo(400);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM curso WHERE empresa_id = ?", Integer.class, company)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM curso WHERE empresa_id = ?", Integer.class, otherCompany)).isZero();
     }
 
     @Test
     void eachCompanyOnlyReachesItsOwnContent() throws Exception {
-        var editorA = member(company(), "EDITOR");
+        UUID companyA = company();
+        var editorA = member(companyA, "EDITOR");
         UUID id = create(editorA, "CURSO", "De la empresa A");
         String lesson = addLesson(editorA, id).path("lecciones").get(0).path("id").asText();
         var editorB = member(company(), "EDITOR");
+        UUID ownId = create(editorB, "CURSO", "De la empresa B");
 
-        assertThat(json.readTree(editorB.get(BASE).body())).isEmpty();
+        for (String path : List.of(BASE, BASE + "?empresaId=" + companyA)) {
+            var response = editorB.get(path);
+            assertThat(response.statusCode()).isEqualTo(200);
+            JsonNode list = json.readTree(response.body());
+            assertThat(list).hasSize(1);
+            assertThat(list.get(0).path("id").asText()).isEqualTo(ownId.toString());
+        }
         var foreign = editorB.get(BASE + "/" + id);
         var missing = editorB.get(BASE + "/" + UUID.randomUUID());
         assertThat(foreign.statusCode()).isEqualTo(403);
         assertThat(foreign.body()).isEqualTo(missing.body());
+        assertThat(editorB.get(BASE + "/" + id + "?empresaId=" + companyA).statusCode()).isEqualTo(403);
         assertThat(editorB.send("PUT", BASE + "/" + id, data("Pisado")).statusCode()).isEqualTo(403);
+        assertThat(editorB.send("PUT", BASE + "/" + id + "?empresaId=" + companyA, data("Pisado")).statusCode()).isEqualTo(403);
         assertThat(editorB.send("DELETE", BASE + "/" + id + "/lessons/" + lesson, "").statusCode()).isEqualTo(403);
         assertThat(editorB.send("DELETE", BASE + "/" + id, "").statusCode()).isEqualTo(403);
         assertThat(jdbc.queryForObject("SELECT titulo FROM curso WHERE id = ?", String.class, id)).isEqualTo("De la empresa A");
+    }
+
+    @Test
+    void courseCreationUsesAuthenticatedCompanyDespiteFormAndQueryOverrides() throws Exception {
+        UUID company = company();
+        UUID otherCompany = company();
+        var editor = member(company, "EDITOR");
+        String email = accounts.byId(editor.id).orElseThrow().correo();
+        var client = new Browser();
+        String form = "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
+            + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8)
+            + "&empresaId=" + otherCompany;
+        assertThat(client.send("POST", "/auth/login", HttpRequest.BodyPublishers.ofString(form),
+            "application/x-www-form-urlencoded").statusCode()).isEqualTo(204);
+        assertThat(json.readTree(client.get("/account").body()).path("empresaId").asText()).isEqualTo(company.toString());
+
+        var created = client.send("POST", BASE + "?empresaId=" + otherCompany, course("CURSO", "De la sesión"));
+        assertThat(created.statusCode()).isEqualTo(201);
+        UUID id = UUID.fromString(json.readTree(created.body()).path("id").asText());
+        assertThat(jdbc.queryForMap("SELECT empresa_id, creado_por FROM curso WHERE id = ?", id))
+            .containsEntry("empresa_id", company).containsEntry("creado_por", editor.id);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM curso WHERE empresa_id = ?", Integer.class, otherCompany)).isZero();
     }
 
     @Test
