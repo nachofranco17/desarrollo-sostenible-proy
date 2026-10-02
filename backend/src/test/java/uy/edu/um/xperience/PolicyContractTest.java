@@ -48,6 +48,8 @@ class PolicyContractTest {
         @GetMapping("/api/test/no-action") public String missing() { return "must never run"; }
         @GetMapping("/api/test/unknown-action") @RequiereAccion("no.declarada")
         public String unknown() { return "must never run"; }
+        @GetMapping("/test/outside-api") @RequiereAccion("catalogo.ver")
+        public String outsideApi() { return "must never run"; }
     }
     private Sujeto admin() {
         String email = UUID.randomUUID() + "@example.test";
@@ -60,6 +62,13 @@ class PolicyContractTest {
             mvc.perform(get(path).with(user(subject.usuarioId().toString()))).andExpect(status().isForbidden());
             verify(registry).denegado(eq(subject), anyString(), eq(path));
         }
+    }
+    @Test void errorPageAndRoutesOutsideApiCannotBeRequestedDirectly() throws Exception {
+        mvc.perform(get("/error")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/test/outside-api")).andExpect(status().isUnauthorized());
+        var subject = admin();
+        mvc.perform(get("/error").with(user(subject.usuarioId().toString()))).andExpect(status().isForbidden());
+        verify(registry).denegado(eq(subject), anyString(), eq("/error"));
     }
     @Test void policyDatabaseErrorsDenyBothFunctionAndRowsAndAreReportedByThePep() throws Exception {
         var subject = admin();
