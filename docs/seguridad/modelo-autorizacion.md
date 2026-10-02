@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.3 (02/10/2026)
+Versión: 1.4 (02/10/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -117,7 +117,8 @@ public interface EvaluadorPolitica {
 Reglas del contrato:
 
 - **Denegar por defecto.** Si no hay un permiso que aplique, `puedeInvocar` y `autorizar` devuelven `false` y `filtrar` devuelve una condición que no coincide con ninguna fila (`cb.disjunction()`). Nunca una condición vacía, que coincidiría con todas (R6).
-- **Error equivale a denegar.** Cualquier excepción durante la evaluación se trata como denegación (R6).
+- **Error equivale a denegar.** Cualquier excepción durante la evaluación se trata como denegación (R6), tanto en el evaluador como en el PEP y en el filtro de login y logout. El cliente recibe la misma respuesta genérica que ante cualquier denegación. La causa queda solo en el log del servidor, sin datos de la solicitud como contraseñas, tokens o parámetros.
+- **Una falla del registro no impide denegar.** Si la interfaz de registro (R18) falla, la denegación ocurre igual y con la misma respuesta. El error queda en el log del servidor.
 - **Escrituras transaccionales.** Toda operación de escritura se ejecuta dentro de una transacción (`@Transactional`), para que una denegación o un error a mitad de la operación no deje cambios aplicados.
 
 ### Declaración de la acción en cada endpoint
