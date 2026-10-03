@@ -46,7 +46,11 @@ public class SessionPolicyFilter extends OncePerRequestFilter {
                 log.error("Fallo la evaluacion de {}; se deniega", action, error);
                 allowed = false;
             }
-            if (!allowed) { denials.responder(request, response); return; }
+            if (!allowed) {
+                Denegaciones.marcarRolDenegado(request);
+                denials.responder(request, response);
+                return;
+            }
         }
         chain.doFilter(request, response);
     }

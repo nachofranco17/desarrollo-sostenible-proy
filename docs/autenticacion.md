@@ -57,7 +57,7 @@ El PEP exige `@RequiereAccion` y consulta `puedeInvocar` antes del handler. Regi
 
 `GET /api/auth/csrf` es infraestructura de Spring Security implementada en el filtro, no un controller de negocio sin anotación. Solo entrega el token antifalsificación de la sesión. Solo los despachos internos de error están habilitados, sin detalles internos; un pedido directo a `/error` se deniega. CSRF y `anyRequest().denyAll()` se mantienen.
 
-La prueba de reautenticación se guarda del lado del servidor, vinculada al usuario, empresa y rol de la sesión. Vence a los cinco minutos (`security.reauthentication-validity`) y una contraseña incorrecta invalida la confirmación previa. Las reglas de reautenticación y exclusión de la propia membresía están en el evaluador. Las denegaciones del PEP, filtros, handlers y campos inválidos se comunican a `RegistroAccesos`, cuyo almacenamiento definitivo corresponde a R18/R19.
+La prueba de reautenticación se guarda del lado del servidor, vinculada al usuario, empresa y rol de la sesión. Vence a los cinco minutos (`security.reauthentication-validity`) y una contraseña incorrecta invalida la confirmación previa. Las reglas de reautenticación y exclusión de la propia membresía están en el evaluador. Las denegaciones del PEP, filtros, handlers y campos inválidos se comunican a `RegistroAccesos` (RS18 emite el evento estructurado; RS19 protege el almacén). Detalle en [rs18-registro-accesos-denegados.md](seguridad/rs18-registro-accesos-denegados.md).
 
 La página protegida del frontend es `/mi-cuenta`. Su guardia consulta `/api/account` al cargar y al recuperar el foco; el servidor aplica la protección independientemente del navegador. **Verificar acceso** realiza una nueva consulta al backend.
 

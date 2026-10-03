@@ -31,16 +31,31 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
         try {
             if (!ServletRequestPathUtils.hasParsedRequestPath(request)) ServletRequestPathUtils.parseAndCache(request);
             var chain = mapping.getObject().getHandler(request);
-            if (chain == null || !(chain.getHandler() instanceof HandlerMethod handler)) return new AuthorizationDecision(false);
+            if (chain == null || !(chain.getHandler() instanceof HandlerMethod handler)) {
+                Denegaciones.marcarRolDenegado(request);
+                return new AuthorizationDecision(false);
+            }
             var action = handler.getMethodAnnotation(RequiereAccion.class);
-            if (action == null) return new AuthorizationDecision(false);
+            if (action == null) {
+                Denegaciones.marcarRolDenegado(request);
+                return new AuthorizationDecision(false);
+            }
             request.setAttribute(Denegaciones.ACTION, action.value());
             if ("invitacion.aceptar".equals(action.value())) {
-                return new AuthorizationDecision(invitations.valid(request.getHeader(InvitationTokens.HEADER)));
+                boolean allowed = invitations.valid(request.getHeader(InvitationTokens.HEADER));
+                if (!allowed) {
+                    Denegaciones.marcarRolDenegado(request);
+                }
+                return new AuthorizationDecision(allowed);
             }
-            return new AuthorizationDecision(policy.puedeInvocar(subjects.resolve(authentication.get()), action.value()));
+            boolean allowed = policy.puedeInvocar(subjects.resolve(authentication.get()), action.value());
+            if (!allowed) {
+                Denegaciones.marcarRolDenegado(request);
+            }
+            return new AuthorizationDecision(allowed);
         } catch (Exception error) {
             log.error("Fallo el PEP evaluando {}; se deniega", request.getRequestURI(), error);
+            Denegaciones.marcarRolDenegado(request);
             return new AuthorizationDecision(false);
         }
     }

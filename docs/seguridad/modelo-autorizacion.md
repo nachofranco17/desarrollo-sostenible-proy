@@ -155,7 +155,7 @@ El PEP (R5) es un `AuthorizationManager` de Spring Security aplicado a todas las
 - Si ocurre cualquier error durante la evaluación, rechaza (R6).
 - En cualquier otro caso, deja pasar la solicitud al handler, que resuelve el nivel de dato.
 
-Los handlers deniegan lanzando `AccessDeniedException`. Toda denegación, sea del PEP, de un filtro o de un handler, termina en un único componente que arma la respuesta: 401 si no hay sesión y 403 si la hay, siempre con el mismo mensaje genérico. Ese componente además la informa a una interfaz de registro que implementa R18. Mientras R18 no esté hecho, la implementación no hace nada, pero toda denegación ya la invoca:
+Los handlers deniegan lanzando `AccessDeniedException`. Toda denegación, sea del PEP, de un filtro o de un handler, termina en un único componente que arma la respuesta: 401 si no hay sesión y 403 si la hay, siempre con el mismo mensaje genérico. Ese componente además la informa a `RegistroAccesos` (RS18). La implementación `RegistroAccesosEstructurado` emite un evento JSON parseable con metadatos seguros (usuario, origen, recurso, operación, motivo); el detalle está en [rs18-registro-accesos-denegados.md](rs18-registro-accesos-denegados.md). La interfaz permanece:
 
 ```java
 public interface RegistroAccesos {
