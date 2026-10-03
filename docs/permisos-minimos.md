@@ -59,4 +59,4 @@ cd backend
 
 Se verifican registro/login/logout por HTTP, permisos iniciales, membresías sin rol, asignación con reautenticación, revocación, consultas filtradas por usuario/empresa, expiración de la confirmación, campos prohibidos, PEP sin anotación, errores de política y llamadas al registro de denegaciones.
 
-Una prueba contrasta la tabla de permisos con el documento; otra actualiza una base V3 y comprueba que conserva usuarios, hashes y membresías. La suite PostgreSQL usa Testcontainers y se omite si Docker no está disponible.
+Una prueba contrasta la tabla de permisos con el documento; otra actualiza una base V3 y comprueba que conserva usuarios, hashes y membresías.

@@ -222,12 +222,12 @@ Todos los identificadores son UUID (R13). Las entidades vinculadas a una empresa
 |---|---|---|
 | Framework | Spring Boot + Spring Security | R5, R6, R8, R10 |
 | Acceso a datos | Spring Data JPA con Specifications | R11, R15 |
-| Base de datos | PostgreSQL | R19 (usuario con permiso solo de INSERT sobre los registros) |
+| Base de datos | H2 (archivo local; SQL en modo compatible con PostgreSQL) | Persistencia de sesiones, permisos y dominio. R19 (protección del almacén de logs) sigue pendiente |
 | Sesiones | Spring Session JDBC (en el servidor, no JWT) | R16 |
 | Migraciones | Flyway (esquema y carga de la tabla de permisos) | R1, R4 |
-| Archivos | MinIO privado, accesible solo desde el backend. Toda descarga pasa por un endpoint del backend (`material.descargar`, `curriculum.descargar`) | R5, R14 |
+| Archivos | Disco local (`STORAGE_DIR`). Toda descarga pasa por un endpoint del backend (`material.descargar`; `curriculum.descargar` cuando exista). El modelo prevé MinIO más adelante | R5, R14 |
 | Límite de envíos | Bucket4j | Entregables |
-| Pruebas | JUnit 5 + MockMvc + Testcontainers | R20 |
+| Pruebas | JUnit 5 + MockMvc + servidor HTTP real sobre H2 | R20 |
 | Frontend | React + TypeScript, servido por su propio servidor (Vite en desarrollo). El backend expone solo la API | — |
 
 Configuración obligatoria del framework. R22 quedó fuera del alcance como requerimiento independiente, pero estas reglas se mantienen y se verifican con las pruebas de R20:

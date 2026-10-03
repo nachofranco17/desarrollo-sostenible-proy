@@ -2,8 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Empresa,
     [Parameter(Mandatory = $true)][string]$Correo,
     [Parameter(Mandatory = $true)][string]$Nombre,
-    [Parameter(Mandatory = $true)][string]$Apellido,
-    [ValidateSet('dev', 'postgres')][string]$Perfil = 'dev'
+    [Parameter(Mandatory = $true)][string]$Apellido
 )
 $ErrorActionPreference = 'Stop'
 $backendDir = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../backend'))
@@ -21,10 +20,9 @@ try {
     $env:ADMIN_SURNAME = $Apellido
     $env:ADMIN_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
     $env:PROVISION_ACTOR = [Environment]::UserName
-    $profiles = if ($Perfil -eq 'dev') { 'dev,provision' } else { 'provision' }
     Push-Location $backendDir
     try {
-        & java -jar $jarPath "--spring.profiles.active=$profiles" '--spring.main.web-application-type=none'
+        & java -jar $jarPath '--spring.profiles.active=dev,provision' '--spring.main.web-application-type=none'
         if ($LASTEXITCODE -ne 0) { throw 'El alta no se completó.' }
     } finally { Pop-Location }
 } finally {
