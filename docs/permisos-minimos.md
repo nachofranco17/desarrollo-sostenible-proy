@@ -27,7 +27,7 @@ La confirmación dura cinco minutos y pertenece a esa sesión, usuario, empresa 
 - Login y logout se asocian a `sesion.iniciar` y `sesion.cerrar` desde un filtro anterior a los de Spring Security.
 - `EvaluadorPolitica` ofrece autorización de instancia, Specifications y campos legibles/escribibles. Las consultas de cuenta y membresía pasan por el filtro; las lecturas internas de identidad/permisos permiten construir el sujeto antes de autorizar.
 - Ante acción desconocida, ausencia de permiso, recurso no soportado o error del evaluador, se deniega. Las escrituras son transaccionales.
-- Las denegaciones y cuerpos con campos prohibidos invocan `RegistroAccesos`, sin contraseñas, cuerpos ni tokens. El almacenamiento R18/R19 sigue pendiente; la implementación predeterminada es vacía, tal como autoriza el diseño.
+- Las denegaciones y cuerpos con campos prohibidos invocan `RegistroAccesos`, sin contraseñas, cuerpos ni tokens. RS18 emite el evento estructurado (`RegistroAccesosEstructurado`); la protección del almacén (RS19) sigue pendiente. Ver [rs18-registro-accesos-denegados.md](seguridad/rs18-registro-accesos-denegados.md).
 
 ## Pruebas
 

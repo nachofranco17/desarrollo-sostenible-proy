@@ -100,7 +100,7 @@ Fuera del perfil local, las cookies requieren HTTPS por defecto. En un despliegu
 - Sesiones: cookie HttpOnly, SameSite=Lax, expiración por 30 minutos de inactividad y protección CSRF también en login/logout.
 - Autorización: `@RequiereAccion` por endpoint de negocio, PEP central y evaluador de permisos vigente por solicitud. Login y logout atraviesan el mismo evaluador desde un filtro. Las lecturas de datos de la API usan Specifications y se deniega por defecto.
 - Cambio de roles: reautenticación del Administrador mediante `POST /api/auth/reauthenticate`, válida por cinco minutos y vinculada a su sesión. Se rechazan cambios sobre la propia membresía y sobre otras empresas.
-- Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. Su implementación predeterminada no persiste eventos mientras R18/R19 estén pendientes, tal como permite el diseño.
+- Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. RS18 emite un evento JSON estructurado con metadatos seguros ([docs/seguridad/rs18-registro-accesos-denegados.md](docs/seguridad/rs18-registro-accesos-denegados.md)); RS19 (protección del almacén) sigue pendiente.
 
 El catálogo completo de permisos está cargado. Hay módulos de perfiles, gestión de cursos y proyectos e invitaciones del staff. Siguen pendientes ofertas, postulaciones, inscripciones y recuperación/verificación de correo de Talentos. Los alcances que requieren inscripciones o postulaciones reales se deniegan hasta implementar esos recursos y sus consultas. No se agregan endpoints ficticios ni se aceptan relaciones de propiedad enviadas por el cliente.
 

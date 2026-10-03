@@ -40,7 +40,11 @@ public class SessionPolicyFilter extends OncePerRequestFilter {
                 Object resource = "sesion.iniciar".equals(action) ? AuthorizationService.Global.INSTANCE : ResourceAccess.own(subject.usuarioId());
                 allowed = policy.puedeInvocar(subject, action) && policy.autorizar(subject, action, resource);
             } catch (RuntimeException error) { allowed = false; }
-            if (!allowed) { denials.responder(request, response); return; }
+            if (!allowed) {
+                Denegaciones.marcarRolDenegado(request);
+                denials.responder(request, response);
+                return;
+            }
         }
         chain.doFilter(request, response);
     }
