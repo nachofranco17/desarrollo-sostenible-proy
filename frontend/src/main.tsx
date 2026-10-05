@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, post, patch, ApiError, type Account, type TalentProfile } from './api';
 import { CourseEditor, CourseList, NewCourse } from './gestion';
+import { CatalogList, CatalogDetailPage } from './catalogo';
 import './styles.css';
 import { StaffPage, AcceptInvitation } from './staff';
 
@@ -37,7 +38,8 @@ const canManageCourses = (account: Account | null) => account?.rol === 'ADMIN' |
 
 function App() {
   const auth = useContext(Auth);
-  const wide = useLocation().pathname.startsWith('/gestion');
+  const path = useLocation().pathname;
+  const wide = path.startsWith('/gestion') || path.startsWith('/catalogo');
   const courses = (page: ReactNode) => canManageCourses(auth.account) ? page : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />;
   return <>
     <header><Link to="/" className="brand" aria-label="XPerience, inicio"><span className="brand-mark">X</span>XPerience</Link><span className="tagline">Tu próximo paso empieza acá.</span></header>
@@ -48,6 +50,8 @@ function App() {
           <Route path="/" element={<Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
           <Route path="/ingresar" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm />} />
           <Route path="/registro" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm register />} />
+          <Route path="/catalogo" element={<CatalogList />} />
+          <Route path="/catalogo/:id" element={<CatalogDetailPage />} />
           <Route path="/mi-cuenta" element={auth.account ? <MyAccount account={auth.account} /> : <Navigate to="/ingresar" replace />} />
           <Route path="/perfil" element={auth.account?.rol === 'TALENTO' ? <TalentProfilePage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
           <Route path="/gestion" element={courses(<CourseList />)} />
@@ -106,6 +110,7 @@ function AccessForm({ register = false }: { register?: boolean }) {
       <button type="submit" disabled={busy}>{busy ? 'Procesando…' : register ? 'Crear cuenta de Talento' : 'Ingresar'}</button>
     </form>
     <p className="switch">{register ? '¿Ya tenés una cuenta? ' : '¿Es tu primera vez? '}<Link to={register ? '/ingresar' : '/registro'}>{register ? 'Iniciá sesión' : 'Registrate como Talento'}</Link></p>
+    <p className="switch"><Link to="/catalogo">Ver catálogo de cursos y proyectos</Link></p>
     <p className="staff-note">Si sos parte de una empresa, ingresá con tu cuenta habilitada. El resto del staff se incorpora por invitación.</p>
   </div>;
 }
@@ -136,6 +141,7 @@ function MyAccount({ account }: { account: Account }) {
     <dl><dt>Nombre</dt><dd>{account.nombre} {account.apellido}</dd><dt>Correo</dt><dd>{account.correo}</dd><dt>Rol</dt><dd>{roles[account.rol]}</dd>{account.empresaNombre && <><dt>Empresa</dt><dd>{account.empresaNombre}</dd></>}</dl>
     {message && <p className="notice" role="status">{message}</p>}{error && <p className="notice error" role="alert">{error}</p>}
     {account.rol === 'TALENTO' && <Link className="button-link" to="/perfil">Ver mi perfil</Link>}
+    <Link className="button-link" to="/catalogo">Ver catálogo</Link>
     {canManageCourses(account) && <Link className="button-link" to="/gestion">Gestionar cursos y proyectos</Link>}
     {account.rol === 'ADMIN' && <Link className="button-link" to="/staff">Gestionar staff</Link>}
     <button disabled={busy} onClick={verify}>Verificar acceso</button><button disabled={busy} className="secondary" onClick={logout}>Cerrar sesión</button>

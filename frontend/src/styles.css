@@ -18,8 +18,25 @@ h2 { font-size: 28px; margin: 14px 0 12px; letter-spacing: -.8px; }
 form { display: grid; gap: 18px; }
 label { display: grid; gap: 8px; font-size: 14px; font-weight: 600; }
 input { width: 100%; border: 1px solid #b9c6bb; background: #fcfdfb; border-radius: 8px; padding: 13px; color: #18382f; font: inherit; }
-input:focus, select:focus { border-color: #236348; outline: 3px solid #d8f67a80; }
-select { width: 100%; border: 1px solid #b9c6bb; background: #fcfdfb; border-radius: 8px; padding: 13px; color: #18382f; font: inherit; }
+input:focus, select:focus, .field-select:focus { border-color: #236348; outline: 3px solid #d8f67a80; }
+select, .field-select {
+  width: 100%;
+  border: 1px solid #b9c6bb;
+  background-color: #fcfdfb;
+  border-radius: 8px;
+  padding: 13px 40px 13px 13px;
+  color: #18382f;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2313483c' d='M1.4.6 6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px 8px;
+}
+select:hover, .field-select:hover { border-color: #8fa594; background-color: #f7faf4; }
+select:disabled, .field-select:disabled { opacity: .65; cursor: not-allowed; }
 .phone-fields { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; }
 .name-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 button { width: 100%; border: 1px solid #134b3c; border-radius: 9px; background: #134b3c; color: white; font: inherit; font-weight: 650; padding: 14px; cursor: pointer; }
@@ -175,6 +192,11 @@ button.danger:hover { background: #fff0eb; }
 .course-table th { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #5d6b65; }
 .course-table td:first-child { white-space: normal; }
 .course-table tr:last-child td { border-bottom: 0; }
+/* RF3: catálogo */
+.catalog-filters { margin-bottom: 22px; }
+.catalog-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.catalog-actions button { width: auto; margin: 0; }
+.catalog-actions .secondary { margin-top: 0; }
 .type-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .type-option { border: 1px solid #dfe4d9; border-radius: 12px; padding: 14px 16px; cursor: pointer; background: #fcfdfb; }
 .type-option input { width: auto; margin: 0; }
