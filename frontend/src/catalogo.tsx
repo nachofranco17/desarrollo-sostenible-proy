@@ -1,11 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  api, catalogQuery, TECHNOLOGY_OPTIONS,
-  type CatalogDetail, type CatalogFilters, type CatalogPage, type CourseLevel, type CourseType,
+  api, catalogQuery, post, TECHNOLOGY_OPTIONS,
+  type Account, type CatalogDetail, type CatalogFilters, type CatalogPage,
+  type CourseLevel, type CourseType, type EnrollmentPage,
 } from './api';
 
 // RF3: catálogo público de cursos y proyectos publicados.
+// RF4: inscripción desde el detalle (solo Talento autenticado).
 
 const BASE = '/catalog/courses';
 const TYPES: Record<CourseType, string> = { CURSO: 'Curso', PROYECTO: 'Proyecto' };
@@ -134,16 +136,22 @@ export function CatalogList() {
   </>;
 }
 
-export function CatalogDetailPage() {
+export function CatalogDetailPage({ account }: { account: Account | null }) {
   const { id } = useParams();
   const [detail, setDetail] = useState<CatalogDetail | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [enrolled, setEnrolled] = useState(false);
+  const [enrollBusy, setEnrollBusy] = useState(false);
+  const [enrollError, setEnrollError] = useState('');
+  const [justEnrolled, setJustEnrolled] = useState(false);
+  const isTalent = account?.rol === 'TALENTO';
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     setLoading(true);
+    setJustEnrolled(false);
     api<CatalogDetail>(`${BASE}/${id}`)
       .then((result) => { if (!cancelled) setDetail(result); })
       .catch((failure) => { if (!cancelled) { setDetail(null); setError(errorText(failure, 'No se pudo abrir el detalle.')); } })
@@ -151,8 +159,39 @@ export function CatalogDetailPage() {
     return () => { cancelled = true; };
   }, [id]);
 
+  useEffect(() => {
+    if (!id || !isTalent) {
+      setEnrolled(false);
+      return;
+    }
+    let cancelled = false;
+    api<EnrollmentPage>('/enrollments/me')
+      .then((page) => {
+        if (cancelled) return;
+        setEnrolled(page.items.some((item) => item.cursoId === id));
+      })
+      .catch(() => {
+        if (!cancelled) setEnrolled(false);
+      });
+    return () => { cancelled = true; };
+  }, [id, isTalent]);
+
+  async function enroll() {
+    if (!detail) return;
+    setEnrollBusy(true);
+    setEnrollError('');
+    try {
+      await post('/enrollments', JSON.stringify({ cursoId: detail.id }));
+      setEnrolled(true);
+      setJustEnrolled(true);
+    } catch (failure) {
+      setEnrollError(errorText(failure, 'No se pudo completar la inscripción.'));
+    } finally {
+      setEnrollBusy(false);
+    }
+  }
+
   return <>
-    <p><Link to="/catalogo">← Volver al catálogo</Link></p>
     {loading && <p role="status">Cargando…</p>}
     {error && <p className="notice error" role="alert">{error}</p>}
     {detail && <>
@@ -167,6 +206,31 @@ export function CatalogDetailPage() {
         <dt>Costo</dt><dd>{formatCost(detail.costo)}</dd>
         <dt>Empresa</dt><dd>{detail.empresaNombre}</dd>
       </dl>
+      {isTalent && (
+        <div className="catalog-enroll">
+          {enrolled ? (
+            <>
+              <p className="notice" role="status">
+                {justEnrolled
+                  ? 'Te inscribiste correctamente.'
+                  : `Ya estás inscripto en este ${TYPES[detail.tipo].toLowerCase()}.`}
+              </p>
+              <Link className="button-link" to="/inscripciones">Ver mis inscripciones</Link>
+            </>
+          ) : (
+            <button type="button" disabled={enrollBusy} onClick={() => void enroll()}>
+              {enrollBusy ? 'Inscribiendo…' : `Inscribirme a este ${TYPES[detail.tipo].toLowerCase()}`}
+            </button>
+          )}
+          {enrollError && <p className="notice error" role="alert">{enrollError}</p>}
+        </div>
+      )}
+      {!account && (
+        <p className="muted">Para inscribirte, <Link to="/ingresar">iniciá sesión</Link> como Talento.</p>
+      )}
+      {account && !isTalent && (
+        <p className="muted">La inscripción está disponible para cuentas de Talento.</p>
+      )}
     </>}
   </>;
 }

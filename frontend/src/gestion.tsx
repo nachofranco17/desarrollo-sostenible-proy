@@ -66,7 +66,6 @@ export function CourseList() {
         <td><StateBadge state={c.estado} /></td><td>{formatDate(c.actualizadoEn)}</td>
       </tr>)}</tbody>
     </table></div>}
-    <Link className="button-link secondary" to="/mi-cuenta">Volver a mi cuenta</Link>
   </>;
 }
 
@@ -130,7 +129,6 @@ export function NewCourse() {
         </label>)}
       </div>
     </CourseForm>
-    <Link className="button-link secondary" to="/gestion">Volver</Link>
   </>;
 }
 
@@ -160,7 +158,7 @@ export function CourseEditor() {
     catch (failure) { setError(errorText(failure, 'No se pudo eliminar.')); setBusy(false); }
   }
 
-  if (!course) return <>{error ? <p className="notice error" role="alert">{error}</p> : <p role="status">Cargando…</p>}<Link className="button-link secondary" to="/gestion">Volver</Link></>;
+  if (!course) return <>{error ? <p className="notice error" role="alert">{error}</p> : <p role="status">Cargando…</p>}</>;
 
   const editable = course.estado !== 'BAJADO';
   const path = `${BASE}/${course.id}`;
@@ -191,7 +189,6 @@ export function CourseEditor() {
       ? <Lessons course={course} editable={editable} busy={busy} run={run} />
       : <Deliverables course={course} editable={editable} busy={busy} run={run} />}
     <Materials course={course} editable={editable} busy={busy} run={run} />
-    <Link className="button-link secondary" to="/gestion">Volver a cursos y proyectos</Link>
   </>;
 }
 

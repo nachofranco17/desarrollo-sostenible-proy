@@ -97,6 +97,19 @@ export function catalogQuery(filters: CatalogFilters): string {
   return query ? `?${query}` : '';
 }
 
+// ---- RF4: inscripciones del Talento ----
+
+export type EnrollmentItem = {
+  id: string;
+  cursoId: string;
+  tipo: CourseType;
+  titulo: string;
+  porcentajeAvance: number;
+  fecha: string;
+};
+
+export type EnrollmentPage = { items: EnrollmentItem[] };
+
 export type CourseData = {
   titulo: string; descripcion: string; tecnologia: string;
   nivel: CourseLevel; duracionHoras: number; costo: number;

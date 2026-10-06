@@ -7,6 +7,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import uy.edu.um.xperience.account.*;
 import uy.edu.um.xperience.course.Course;
+import uy.edu.um.xperience.enrollment.Enrollment;
 import uy.edu.um.xperience.persistence.*;
 import uy.edu.um.xperience.profile.TalentProfile;
 
@@ -54,6 +55,9 @@ public class AuthorizationService implements EvaluadorPolitica {
         if (resource instanceof TalentProfile p) {
             return ResourceAccess.own(p.usuarioId());
         }
+        if (resource instanceof Enrollment e) {
+            return ResourceAccess.own(e.talentoId());
+        }
         return null;
     }
     @Override public boolean autorizar(Sujeto s, String action, Object resource) {
@@ -96,6 +100,10 @@ public class AuthorizationService implements EvaluadorPolitica {
                     && grants.stream().anyMatch(p -> "ORG".equals(p.alcance))) {
                 return (root, query, cb) -> cb.and(cb.equal(root.get("empresaId"), s.empresaId()),
                     cb.notEqual(root.get("usuarioId"), s.usuarioId()), cb.equal(root.get("estado"), "ACTIVA"));
+            }
+            if (type == Enrollment.class && "inscripcion.ver".equals(action) && s.usuarioId() != null
+                    && grants.stream().anyMatch(p -> "PROPIO".equals(p.alcance))) {
+                return (root, query, cb) -> cb.equal(root.get("talentoId"), s.usuarioId());
             }
             return deny();
         } catch (RuntimeException error) { falla("filtrar", action, error); return deny(); }

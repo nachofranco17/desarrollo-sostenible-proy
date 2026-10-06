@@ -35,7 +35,7 @@ export function StaffPage({ currentUserId }: { currentUserId: string }) {
     finally { form.reset(); setBusy(false); }
   }
   return <>
-    <Link to="/mi-cuenta">Volver a mi cuenta</Link><h2>Staff de la empresa</h2>
+    <h2>Staff de la empresa</h2>
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     <form onSubmit={invite}><h3>Invitar un miembro</h3>
       <label>Correo del invitado<input name="correo" type="email" required maxLength={254} /></label>
