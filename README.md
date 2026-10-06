@@ -1,11 +1,12 @@
 # XPerience
 
-Plataforma de formación y empleabilidad. Esta entrega (Sprint 1) cubre:
+Plataforma de formación y empleabilidad. El repositorio cubre:
 
 - **RF1** — registro público de Talentos e inicio/cierre de sesión (Talento, Administrador, Reclutador y Editor)
 - **RF2** — perfil del Talento ([guía](docs/sprint1/rf2-perfil-talento.md))
 - **RF5** — gestión de cursos y proyectos por la empresa ([guía](docs/sprint1/rf5-gestion-cursos-proyectos.md))
 - **RF7** — invitaciones y asignación de roles del staff ([guía](docs/sprint1/rf7-invitaciones-staff.md))
+- **RF6, Sprint 2 — primera etapa backend:** ofertas, CV privado versionado, postulaciones y listado empresarial filtrable ([guía](docs/sprint2/rf6-ofertas-postulaciones.md)). El frontend de RF6 sigue pendiente.
 
 El registro público crea **únicamente Talentos**. Las empresas y su primer Administrador se crean mediante un script de desarrollo. No hay formulario ni endpoint público de alta de empresas. El Administrador invita al resto del staff y asigna roles desde **Mi cuenta → Gestionar staff**. Conforme a `docs/seguridad`, el staff necesita una membresía activa y un rol asignado para iniciar sesión y operar. El Administrador debe reautenticarse antes de asignar roles.
 
@@ -118,12 +119,12 @@ Las pruebas E2E usan Google Chrome instalado. Playwright inicia Vite (`npm run d
 - Frontend: React, TypeScript y Vite. No guarda credenciales ni tokens de sesión en localStorage.
 - Contraseñas: PBKDF2 con sal aleatoria y parámetros de Spring Security 5.8; nunca se devuelven por la API.
 - Sesiones: cookie HttpOnly, SameSite=Lax, expiración por 30 minutos de inactividad y protección CSRF también en login/logout.
-- Autorización: `@RequiereAccion` por endpoint de negocio, PEP central y evaluador de permisos vigente por solicitud. Login y logout atraviesan el mismo evaluador desde un filtro. Las lecturas de datos de la API usan Specifications y se deniega por defecto.
+- Autorización: `@RequiereAccion` por endpoint de negocio, PEP central y evaluador de permisos vigente por solicitud. Login y logout atraviesan el mismo evaluador desde un filtro. Las lecturas usan Specifications o consultas JDBC acotadas por dueño/empresa/publicación y evaluación de instancia; se deniega por defecto.
 - Cambio de roles: reautenticación del Administrador mediante `POST /api/auth/reauthenticate`, válida por cinco minutos y vinculada a su sesión. Se rechazan cambios sobre la propia membresía y sobre otras empresas.
 - Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. RS18 emite un evento JSON estructurado con metadatos seguros ([docs/seguridad/rs18-registro-accesos-denegados.md](docs/seguridad/rs18-registro-accesos-denegados.md)); RS19 (protección del almacén) sigue pendiente.
-- Archivos de curso: disco local (`STORAGE_DIR`); el modelo prevé MinIO más adelante.
+- Archivos de curso y CV: disco privado (`STORAGE_DIR`), descargados a través del backend. Los CV son PDF de hasta 5 MiB; cada postulación conserva su versión original.
 
-El catálogo completo de permisos está cargado. Hay módulos de perfiles, gestión de cursos y proyectos e invitaciones del staff. Siguen pendientes ofertas, postulaciones, inscripciones, descarga de material para Talentos inscriptos (RF4) y recuperación/verificación de correo. Los alcances que requieren inscripciones o postulaciones reales se deniegan hasta implementar esos recursos y sus consultas. No se agregan endpoints ficticios ni se aceptan relaciones de propiedad enviadas por el cliente.
+El catálogo completo de permisos está cargado. Hay módulos de perfiles, catálogo, gestión de cursos y proyectos, invitaciones del staff y backend RF6. ADMIN/RECLUTADOR crean ofertas y las publican; el Talento se postula con su CV actual, y la empresa consulta perfiles seguros y el CV adjunto de sus postulantes. `POSTULANTE` exige una relación persistida real. Siguen pendientes frontend RF6, cierre/reapertura/eliminación de ofertas, cambios de estado de postulaciones, inscripciones y descarga de material para Talentos inscriptos (RF4), y recuperación/verificación de correo. `INSCRIPTO` sigue denegado. No se aceptan relaciones de propiedad enviadas por el cliente.
 
 Ver también:
 

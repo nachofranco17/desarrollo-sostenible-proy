@@ -139,10 +139,12 @@ public class Denegaciones {
     }
 
     private static String clasificar(String action, String path) {
-        if ((action != null && action.startsWith("material.")) || path.contains("/materials/")) {
+        if ((action != null && (action.startsWith("material.") || action.startsWith("curriculum.")))
+                || path.contains("/materials/") || path.endsWith("/curriculum")) {
             return FILE_ACCESS_DENIED;
         }
-        if (path.contains("/company/courses") || (action != null && action.startsWith("curso."))) {
+        if (path.contains("/company/courses") || path.contains("/company/offers")
+                || (action != null && action.startsWith("curso."))) {
             return ORGANIZATION_ACCESS_DENIED;
         }
         if (action != null && action.startsWith("staff.")) {

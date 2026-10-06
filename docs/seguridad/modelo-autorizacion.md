@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.5 (02/10/2026)
+Versión: 1.6 (06/10/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -172,7 +172,7 @@ Casos que no pasan por un controller propio y se contemplan explícitamente:
 
 ### Uso en el handler
 
-Toda lectura pasa por `filtrar`, **incluidas las búsquedas por id**:
+En los repositorios JPA toda lectura pasa por `filtrar`, **incluidas las búsquedas por id**:
 
 ```java
 Curso curso = cursos.findOne(
@@ -181,6 +181,10 @@ Curso curso = cursos.findOne(
 ```
 
 Así, "no existe" y "no tiene permiso" producen la misma respuesta de prohibido, sin revelar la existencia del recurso (R11).
+
+Los módulos con records y `JdbcTemplate` (perfil, catálogo, cursos y RF6) aplican la misma restricción mediante SQL parametrizado: la consulta incluye publicación, dueño o empresa obtenidos del sujeto antes de aplicar filtros de negocio. Cada instancia cargada se valida con `autorizar`; los identificadores anidados se buscan junto con el padre y la empresa. No se usa una Specification JPA sobre records ni se consulta un conjunto global para filtrarlo después. La equivalencia es **consulta acotada + autorización de instancia**, incluida la búsqueda por id.
+
+En RF6, `POSTULANTE` solo acepta `ApplicantAccess` construido a partir de una postulación persistida. El evaluador comprueba en la base la coincidencia de postulación, oferta, empresa, Talento y versión del currículum, así como el dueño del CV. Un `ResourceAccess` o una bandera enviada por el cliente no habilitan ese alcance. El listado empresarial autoriza `postulacion.ver_listado` y también `perfil.ver_postulante` sobre cada contexto antes de construir la proyección del perfil. La descarga empresarial autoriza `curriculum.descargar` sobre esa misma relación, nunca sobre el UUID suelto de un CV.
 
 ## 7. Modelo de datos
 
@@ -216,16 +220,18 @@ Todos los identificadores son UUID (R13). Las entidades vinculadas a una empresa
 | Oferta | borrador, publicada, cerrada |
 | Postulación | enviada, preseleccionada, seleccionada, descartada |
 
+La primera etapa de RF6 solo persiste ofertas `BORRADOR`/`PUBLICADA` y postulaciones `ENVIADA`. No ofrece cierre, eliminación, reapertura ni transiciones de postulación. Los estados restantes y `postulacion.cambiar_estado` permanecen como diseño para etapas posteriores, sin endpoint nuevo. `INSCRIPTO` sigue denegado mientras no exista RF4.
+
 ## 8. Stack
 
 | Capa | Tecnología | Requerimientos que apoya |
 |---|---|---|
 | Framework | Spring Boot + Spring Security | R5, R6, R8, R10 |
-| Acceso a datos | Spring Data JPA con Specifications | R11, R15 |
+| Acceso a datos | Spring Data JPA con Specifications para identidad/staff; records y JdbcTemplate con SQL acotado para perfil/catálogo/cursos/RF6 | R11, R15 |
 | Base de datos | H2 (archivo local; SQL en modo compatible con PostgreSQL) | Persistencia de sesiones, permisos y dominio. R19 (protección del almacén de logs) sigue pendiente |
 | Sesiones | Spring Session JDBC (en el servidor, no JWT) | R16 |
 | Migraciones | Flyway (esquema y carga de la tabla de permisos) | R1, R4 |
-| Archivos | Disco local (`STORAGE_DIR`). Toda descarga pasa por un endpoint del backend (`material.descargar`; `curriculum.descargar` cuando exista). El modelo prevé MinIO más adelante | R5, R14 |
+| Archivos | Disco local (`STORAGE_DIR`). Toda descarga pasa por un endpoint del backend (`material.descargar`, `curriculum.descargar`). El modelo prevé MinIO más adelante | R5, R14 |
 | Límite de envíos | Bucket4j | Entregables |
 | Pruebas | JUnit 5 + MockMvc + servidor HTTP real sobre H2 | R20 |
 | Frontend | React + TypeScript, servido por su propio servidor (Vite en desarrollo). El backend expone solo la API | — |
@@ -243,7 +249,7 @@ En desarrollo, el servidor de Vite reenvía las llamadas a `/api` hacia el backe
 ## 9. Decisiones de diseño
 
 1. **Roles como agrupadores de permisos en datos.** Como cada miembro del staff tiene un único rol, asignar permisos usuario por usuario no aporta nada. Lo que distingue este modelo de un RBAC con chequeos de rol en el código es dónde se decide: un evaluador, sobre permisos y relaciones con el objeto.
-2. **Toda consulta pasa por `filtrar`, incluso por id.** Unifica la verificación por instancia y evita revelar la existencia de recursos (R11).
+2. **Toda consulta incorpora su alcance, incluso por id.** JPA usa `filtrar`; JDBC usa consultas acotadas y `autorizar` como se describe en la sección 6. Evita revelar la existencia de recursos (R11).
 3. **Sesión en el servidor en lugar de JWT.** Permite que los cambios de permisos tengan efecto inmediato (R16).
 4. **Identificadores UUID en todas las entidades.** Impiden enumerar recursos (R13).
 5. **`empresa_id` en toda entidad vinculada a una empresa.** Permite que el filtro por organización sea una condición directa, sin joins (R15).

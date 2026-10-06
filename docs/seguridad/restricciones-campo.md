@@ -1,7 +1,7 @@
 # Restricciones de acceso a nivel de campo
 
 Requerimiento de seguridad: **R2** (ASVS v5.0.0-8.1.2)
-Versión: 1.1 (27/09/2026)
+Versión: 1.2 (06/10/2026)
 
 Este documento extiende la [matriz de control de acceso](matriz-control-acceso.md) al nivel de campo, para las entidades que combinan datos de distinta sensibilidad. Define qué campos puede leer y cuáles puede modificar cada consumidor. Su implementación corresponde a R12.
 
@@ -28,6 +28,29 @@ Se aplican a todas las entidades, además de las tablas de cada una.
 | Otras postulaciones | L | — | — |
 
 La visibilidad del teléfono se evalúa sobre el estado de la postulación a través de la cual la empresa accede al perfil.
+
+En la primera etapa de RF6 todas las postulaciones permanecen `ENVIADA`. La proyección empresarial contiene exclusivamente `nombre`, `apellido`, `correo` y `especializaciones`. No incluye teléfono, preferencias de notificación, otras postulaciones, roles, permisos ni secretos. Progreso, proyectos completados y logros quedan pendientes de RF4; no se inventan datos ni se incluyen en esta proyección. `AuthorizationService.camposLegibles` define esos cuatro campos sobre el contexto persistido `ApplicantAccess`.
+
+## Oferta (RF6, primera etapa)
+
+| Campo | Talento / staff (publicada) | Admin / Reclutador (org) |
+|---|---|---|
+| Título y descripción | L | L/E, solo en BORRADOR |
+| Cursos/proyectos requeridos (`cursosRequeridos`) | L | L/E, solo en BORRADOR |
+| Id, estado, fechas | L | L; valores calculados por el servidor |
+| Empresa y creador | — | —; derivados de sesión, no incluidos en los DTOs |
+
+El cliente solo envía `titulo`, `descripcion` y `cursosRequeridos` (UUID de recursos existentes). Los requisitos pueden ser cualquier curso/proyecto `PUBLICADO`, incluso de otra empresa; una lista vacía es válida. Cada requisito se comprueba al crear, editar y publicar. Publicar no acepta campos editables ni valores de estado. Una oferta publicada ya no se edita.
+
+## Currículum (RF6, primera etapa)
+
+| Campo | Talento (propio) | Admin / Reclutador (postul.) |
+|---|---|---|
+| Archivo PDF | L/E: subir/reemplazar y descargar el actual | L: versión adjunta a la postulación |
+| Id, nombre seguro, tipo MIME, tamaño, fecha | L | L en la descarga autorizada |
+| Dueño y ubicación privada | — | — |
+
+La entrada multipart solo admite `archivo`: PDF de hasta 5 MiB con nombre seguro. El servidor deriva dueño, id, fecha y metadatos. Nunca devuelve `claveAlmacen` ni una ruta física. La referencia actual pertenece al Talento; reemplazarla crea una versión distinta y no modifica la versión fijada en una postulación anterior.
 
 ## Inscripción
 
@@ -68,6 +91,10 @@ La visibilidad del teléfono se evalúa sobre el estado de la postulación a tra
 | Estado | L | L/E, según las transiciones permitidas |
 
 El currículum adjunto es el que el Talento envió al postularse. Si después actualiza el de su perfil, la postulación conserva el original.
+
+En la primera etapa de RF6 el POST de postulación tiene cuerpo vacío (o `{}`). La oferta se obtiene de la ruta y el Talento de la sesión; el backend fija el CV actual, `ENVIADA` y la fecha. Rechaza `usuarioId`, `talentoId`, `empresaId`, `estado`, `fecha`, `curriculumId` y cualquier campo desconocido. El CV actual es obligatorio. No existe edición ni transición de estado en esta etapa.
+
+La consulta propia devuelve id, oferta, nombre de empresa, estado y fecha. El listado empresarial devuelve id, estado, fecha y la proyección segura del perfil. Ninguna salida expone ids de dueño/empresa/CV, otras postulaciones ni ubicación de almacenamiento. Los campos de lectura/escritura de RF6 se declaran también en `AuthorizationService`; cada DTO contiene únicamente su proyección admitida.
 
 ### Estados y transiciones
 

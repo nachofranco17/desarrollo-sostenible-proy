@@ -10,7 +10,7 @@ La fuente de verdad es [docs/seguridad/modelo-autorizacion.md](seguridad/modelo-
 - Asignar Reclutador habilita sus operaciones sobre su empresa. También puede consultar catálogo y ofertas publicados de otras empresas, como exige la matriz; no puede gestionar esos recursos ajenos.
 - Los permisos se vuelven a consultar en solicitudes posteriores. Reasignar un rol no acumula los permisos del anterior; dar de baja la cuenta/membresía o dejarla sin rol revoca el acceso de sesiones existentes.
 
-El catálogo de permisos no implementa módulos de negocio. Ya existen cursos, perfiles editables e invitaciones del staff; ofertas, inscripciones y postulaciones siguen pendientes. Las decisiones sobre publicación/propiedad de módulos pendientes se prueban con atributos del servidor. Los alcances INSCRIPTO y POSTULANTE se deniegan hasta que existan sus relaciones y consultas reales; no se sustituyen por banderas que pueda enviar el cliente.
+El catálogo de permisos no implementa módulos de negocio por sí mismo. Ya existen cursos, perfiles editables, invitaciones del staff y la primera etapa de RF6 (ofertas, CV y postulaciones). RF6 reutiliza los permisos de V4 sin agregarlos ni modificar migraciones aplicadas. `POSTULANTE` se comprueba sobre una relación persistida mediante `ApplicantAccess`, incluidos oferta, empresa, Talento y CV original. `INSCRIPTO` sigue denegado hasta que exista RF4; no se sustituye por banderas del cliente.
 
 ## Cambio de rol con reautenticación
 
@@ -25,7 +25,7 @@ La confirmación dura cinco minutos y pertenece a esa sesión, usuario, empresa 
 
 - Los endpoints de negocio declaran `@RequiereAccion`. El PEP comprueba el nivel de función antes del handler.
 - Login y logout se asocian a `sesion.iniciar` y `sesion.cerrar` desde un filtro anterior a los de Spring Security.
-- `EvaluadorPolitica` ofrece autorización de instancia, Specifications y campos legibles/escribibles. Las consultas de cuenta y membresía pasan por el filtro; las lecturas internas de identidad/permisos permiten construir el sujeto antes de autorizar.
+- `EvaluadorPolitica` ofrece autorización de instancia, Specifications y campos legibles/escribibles. Cuenta y membresía usan Specifications; los módulos JDBC consultan con dueño/empresa/publicación y después autorizan la instancia. Las lecturas internas de identidad/permisos permiten construir el sujeto antes de autorizar.
 - Ante acción desconocida, ausencia de permiso, recurso no soportado o error del evaluador, se deniega. Las escrituras son transaccionales.
 - Las denegaciones y cuerpos con campos prohibidos invocan `RegistroAccesos`, sin contraseñas, cuerpos ni tokens. RS18 emite el evento estructurado (`RegistroAccesosEstructurado`); la protección del almacén (RS19) sigue pendiente. Ver [rs18-registro-accesos-denegados.md](seguridad/rs18-registro-accesos-denegados.md).
 
@@ -41,7 +41,7 @@ La protección ya forma parte del registro, RF7 y el evaluador de política. Las
 
 La matriz vigente también incluye acciones propias del Talento como consultar sus inscripciones y postulaciones o gestionar su currículum. Esas acciones no conceden acceso a recursos de la empresa ni a datos de otros Talentos. RS7 se comprueba manteniendo esa matriz; no se modifica el catálogo de permisos con estas pruebas.
 
-Catálogo, inscripciones, ofertas y postulaciones todavía no tienen rutas de negocio implementadas: sus condiciones se prueban directamente sobre el evaluador. Perfil, cursos y staff se verifican además por HTTP. No se agregan módulos de negocio para probar RS7.
+Catálogo, perfil, cursos, staff y RF6 tienen rutas de negocio y pruebas HTTP. Las inscripciones siguen pendientes y sus condiciones se comprueban sobre el evaluador. Las pruebas históricas de RS7 sobre atributos del servidor se conservan; RF6 incorpora además pruebas de sus relaciones persistidas y aislamiento empresarial. Ver [RF6, primera etapa](sprint2/rf6-ofertas-postulaciones.md).
 
 Para ejecutar únicamente los tres casos de aceptación:
 

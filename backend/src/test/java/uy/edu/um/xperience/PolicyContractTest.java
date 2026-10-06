@@ -2,6 +2,7 @@ package uy.edu.um.xperience;
 
 import java.nio.file.*;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.*;
 import uy.edu.um.xperience.account.*;
+import uy.edu.um.xperience.application.JobApplication;
+import uy.edu.um.xperience.curriculum.Curriculum;
+import uy.edu.um.xperience.offer.Offer;
 import uy.edu.um.xperience.persistence.*;
 import uy.edu.um.xperience.provision.CompanyProvisioner;
 import uy.edu.um.xperience.security.*;
@@ -226,6 +230,83 @@ class PolicyContractTest {
         assertThat(policy.autorizar(s, "postulacion.cambiar_estado", new TransicionPostulacion(s.empresaId(), "enviada", "seleccionada"))).isFalse();
         assertThat(policy.autorizar(s, "postulacion.cambiar_estado", new TransicionPostulacion(s.empresaId(), "descartada", "preseleccionada"))).isFalse();
         assertThat(policy.autorizar(s, "postulacion.cambiar_estado", new TransicionPostulacion(UUID.randomUUID(), "enviada", "preseleccionada"))).isFalse();
+    }
+    @Test void applicantScopeRequiresTheExactPersistedApplicationAndItsCurriculumSnapshot() {
+        var companyA = admin();
+        var companyB = admin();
+        UUID talentId = accounts.create(UUID.randomUUID() + "@example.test", "Ana", "Postulante", "unused-hash", "TALENTO");
+        jdbc.update("INSERT INTO perfil_talento(usuario_id) VALUES (?)", talentId);
+        UUID offerId = UUID.randomUUID();
+        jdbc.update("""
+            INSERT INTO oferta(id, empresa_id, titulo, descripcion, estado, creado_por)
+            VALUES (?, ?, 'Oferta', 'Descripción', 'PUBLICADA', ?)
+            """, offerId, companyA.empresaId(), companyA.usuarioId());
+        UUID originalCv = UUID.randomUUID();
+        UUID replacementCv = UUID.randomUUID();
+        for (UUID cvId : List.of(originalCv, replacementCv)) {
+            jdbc.update("""
+                INSERT INTO curriculum(id, usuario_id, nombre_original, tipo_mime, tamanio_bytes, clave_almacen)
+                VALUES (?, ?, 'cv.pdf', 'application/pdf', 20, ?)
+                """, cvId, talentId, UUID.randomUUID().toString());
+        }
+        UUID applicationId = UUID.randomUUID();
+        jdbc.update("""
+            INSERT INTO postulacion(id, talento_id, oferta_id, empresa_id, curriculum_id)
+            VALUES (?, ?, ?, ?, ?)
+            """, applicationId, talentId, offerId, companyA.empresaId(), originalCv);
+        var application = new JobApplication(applicationId, talentId, offerId, companyA.empresaId(),
+            originalCv, "ENVIADA", OffsetDateTime.now());
+        var context = new ApplicantAccess(application);
+
+        assertThat(policy.autorizar(companyA, "perfil.ver_postulante", context)).isTrue();
+        assertThat(policy.autorizar(companyA, "curriculum.descargar", context)).isTrue();
+        assertThat(policy.camposLegibles(companyA, "perfil.ver_postulante", context))
+            .containsExactlyInAnyOrder("nombre", "apellido", "correo", "especializaciones");
+        assertThat(policy.camposLegibles(companyA, "curriculum.descargar", context))
+            .containsExactlyInAnyOrder("id", "nombreOriginal", "tipoMime", "tamanioBytes", "creadoEn");
+        assertThat(policy.autorizar(companyB, "perfil.ver_postulante", context)).isFalse();
+        assertThat(policy.autorizar(companyB, "curriculum.descargar", context)).isFalse();
+        assertThat(policy.autorizar(companyA, "perfil.ver_postulante", application)).isFalse();
+        assertThat(policy.autorizar(companyA, "perfil.ver_postulante",
+            new ResourceAccess(talentId, companyA.empresaId(), true))).isFalse();
+
+        for (var forged : List.of(
+                new JobApplication(UUID.randomUUID(), talentId, offerId, companyA.empresaId(), originalCv, "ENVIADA", application.fecha()),
+                new JobApplication(applicationId, UUID.randomUUID(), offerId, companyA.empresaId(), originalCv, "ENVIADA", application.fecha()),
+                new JobApplication(applicationId, talentId, UUID.randomUUID(), companyA.empresaId(), originalCv, "ENVIADA", application.fecha()),
+                new JobApplication(applicationId, talentId, offerId, companyB.empresaId(), originalCv, "ENVIADA", application.fecha()),
+                new JobApplication(applicationId, talentId, offerId, companyA.empresaId(), replacementCv, "ENVIADA", application.fecha()),
+                new JobApplication(applicationId, talentId, offerId, companyA.empresaId(), originalCv, "SELECCIONADA", application.fecha()))) {
+            assertThat(policy.autorizar(companyA, "perfil.ver_postulante", new ApplicantAccess(forged))).isFalse();
+            assertThat(policy.autorizar(companyA, "curriculum.descargar", new ApplicantAccess(forged))).isFalse();
+        }
+        // Replacing the current CV must preserve access to the version fixed in this application.
+        jdbc.update("UPDATE perfil_talento SET curriculum_actual_id = ? WHERE usuario_id = ?", replacementCv, talentId);
+        assertThat(policy.autorizar(companyA, "curriculum.descargar", context)).isTrue();
+        var replacement = new Curriculum(replacementCv, talentId, "cv.pdf", "application/pdf", 20,
+            UUID.randomUUID().toString(), OffsetDateTime.now());
+        assertThat(policy.autorizar(companyA, "curriculum.descargar", replacement)).isFalse();
+        jdbc.update("DELETE FROM postulacion WHERE id = ?", applicationId);
+        assertThat(policy.autorizar(companyA, "perfil.ver_postulante", context)).isFalse();
+        assertThat(policy.autorizar(companyA, "curriculum.descargar", context)).isFalse();
+    }
+    @Test void rf6FieldContractsExcludeSystemFieldsAndPublishedOffersCannotBeEdited() {
+        var subject = admin();
+        var draft = new Offer(UUID.randomUUID(), subject.empresaId(), "Oferta", "Descripción", "BORRADOR",
+            OffsetDateTime.now(), OffsetDateTime.now());
+        var published = new Offer(draft.id(), draft.empresaId(), draft.titulo(), draft.descripcion(), "PUBLICADA",
+            draft.creadoEn(), draft.actualizadoEn());
+        assertThat(policy.camposEscribibles(subject, "oferta.gestionar", draft))
+            .containsExactlyInAnyOrder("titulo", "descripcion", "cursosRequeridos");
+        assertThat(policy.camposEscribibles(subject, "oferta.gestionar", published)).isEmpty();
+        assertThat(policy.camposLegibles(subject, "oferta.gestionar", published))
+            .doesNotContain("empresaId", "creadoPor", "password", "passwordHash");
+        var talentId = accounts.create(UUID.randomUUID() + "@example.test", "Talento", "Prueba", "unused-hash", "TALENTO");
+        var talent = Sujeto.from(accounts.byId(talentId).orElseThrow());
+        assertThat(policy.autorizar(talent, "postulacion.crear", published)).isTrue();
+        assertThat(policy.camposEscribibles(talent, "postulacion.crear", published)).isEmpty();
+        assertThat(policy.autorizar(talent, "oferta.ver", draft)).isFalse();
+        assertThat(policy.camposEscribibles(talent, "oferta.gestionar", draft)).isEmpty();
     }
     @Test void persistedPermissionsMatchTheDocumentedMatrixExactly() throws Exception {
         var expected = new HashSet<String>();
