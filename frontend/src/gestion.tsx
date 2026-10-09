@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  api, post, put, del, upload,
+  api, post, put, del, upload, TECHNOLOGY_OPTIONS,
   type CourseData, type CourseDetail, type CourseLevel, type CourseState, type CourseSummary, type CourseType,
   type Deliverable, type Lesson,
 } from './api';
@@ -13,7 +13,7 @@ const BASE = '/company/courses';
 const TYPES: Record<CourseType, string> = { CURSO: 'Curso', PROYECTO: 'Proyecto' };
 const LEVELS: Record<CourseLevel, string> = { INICIAL: 'Inicial', INTERMEDIO: 'Intermedio', AVANZADO: 'Avanzado' };
 const STATES: Record<CourseState, string> = { BORRADOR: 'Borrador', PUBLICADO: 'Publicado', BAJADO: 'Dado de baja' };
-const EMPTY: CourseData = { titulo: '', descripcion: '', tecnologia: '', nivel: 'INICIAL', duracionHoras: 10, costo: 0 };
+const EMPTY: CourseData = { titulo: '', descripcion: '', tecnologia: 'Java', nivel: 'INICIAL', duracionHoras: 10, costo: 0 };
 
 function errorText(failure: unknown, fallback: string) {
   return failure instanceof Error ? failure.message : fallback;
@@ -66,7 +66,6 @@ export function CourseList() {
         <td><StateBadge state={c.estado} /></td><td>{formatDate(c.actualizadoEn)}</td>
       </tr>)}</tbody>
     </table></div>}
-    <Link className="button-link secondary" to="/mi-cuenta">Volver a mi cuenta</Link>
   </>;
 }
 
@@ -85,8 +84,15 @@ function CourseForm({ initial, disabled, busy, submitLabel, onSubmit, children }
     <label>Título<input required maxLength={150} value={data.titulo} onChange={(e) => set('titulo', e.target.value)} /></label>
     <label>Descripción<textarea required maxLength={4000} rows={4} value={data.descripcion} onChange={(e) => set('descripcion', e.target.value)} /></label>
     <div className="field-grid">
-      <label>Tecnología<input required maxLength={60} placeholder="Java, React, SQL…" value={data.tecnologia} onChange={(e) => set('tecnologia', e.target.value)} /></label>
-      <label>Nivel<select value={data.nivel} onChange={(e) => set('nivel', e.target.value as CourseLevel)}>
+      <label>Tecnología
+        <select className="field-select" required value={data.tecnologia}
+          onChange={(e) => set('tecnologia', e.target.value)}>
+          {[...new Set([...TECHNOLOGY_OPTIONS, ...(data.tecnologia ? [data.tecnologia] : [])])].map((tech) => (
+            <option key={tech} value={tech}>{tech}</option>
+          ))}
+        </select>
+      </label>
+      <label>Nivel<select className="field-select" value={data.nivel} onChange={(e) => set('nivel', e.target.value as CourseLevel)}>
         {(Object.keys(LEVELS) as CourseLevel[]).map((l) => <option key={l} value={l}>{LEVELS[l]}</option>)}
       </select></label>
       <label>Duración (horas)<input type="number" required min={1} max={1000} value={data.duracionHoras} onChange={(e) => set('duracionHoras', Number(e.target.value))} /></label>
@@ -123,7 +129,6 @@ export function NewCourse() {
         </label>)}
       </div>
     </CourseForm>
-    <Link className="button-link secondary" to="/gestion">Volver</Link>
   </>;
 }
 
@@ -153,7 +158,7 @@ export function CourseEditor() {
     catch (failure) { setError(errorText(failure, 'No se pudo eliminar.')); setBusy(false); }
   }
 
-  if (!course) return <>{error ? <p className="notice error" role="alert">{error}</p> : <p role="status">Cargando…</p>}<Link className="button-link secondary" to="/gestion">Volver</Link></>;
+  if (!course) return <>{error ? <p className="notice error" role="alert">{error}</p> : <p role="status">Cargando…</p>}</>;
 
   const editable = course.estado !== 'BAJADO';
   const path = `${BASE}/${course.id}`;
@@ -184,7 +189,6 @@ export function CourseEditor() {
       ? <Lessons course={course} editable={editable} busy={busy} run={run} />
       : <Deliverables course={course} editable={editable} busy={busy} run={run} />}
     <Materials course={course} editable={editable} busy={busy} run={run} />
-    <Link className="button-link secondary" to="/gestion">Volver a cursos y proyectos</Link>
   </>;
 }
 

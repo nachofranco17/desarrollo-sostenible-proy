@@ -65,6 +65,51 @@ export type CourseType = 'CURSO' | 'PROYECTO';
 export type CourseLevel = 'INICIAL' | 'INTERMEDIO' | 'AVANZADO';
 export type CourseState = 'BORRADOR' | 'PUBLICADO' | 'BAJADO';
 
+/** Opciones de tecnología para catálogo (RF3) y alta de cursos (RF5). */
+export const TECHNOLOGY_OPTIONS = [
+  'Java', 'Spring', 'React', 'TypeScript', 'JavaScript', 'SQL', 'Python',
+  'Node.js', 'Docker', 'Kotlin', 'Go', 'Angular', '.NET', 'AWS',
+] as const;
+
+// ---- RF3: catálogo público ----
+
+export type CatalogItem = {
+  id: string; tipo: CourseType; titulo: string; tecnologia: string; nivel: CourseLevel;
+  duracionHoras: number; costo: number; empresaNombre: string;
+};
+
+export type CatalogDetail = CatalogItem & { descripcion: string };
+
+export type CatalogPage = { items: CatalogItem[]; tecnologiasDisponibles: string[] };
+
+export type CatalogFilters = {
+  q?: string; tecnologia?: string; nivel?: CourseLevel | '';
+  duracionMin?: string; duracionMax?: string; costoMin?: string; costoMax?: string;
+};
+
+export function catalogQuery(filters: CatalogFilters): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    const trimmed = value?.trim();
+    if (trimmed) params.set(key, trimmed);
+  }
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+// ---- RF4: inscripciones del Talento ----
+
+export type EnrollmentItem = {
+  id: string;
+  cursoId: string;
+  tipo: CourseType;
+  titulo: string;
+  porcentajeAvance: number;
+  fecha: string;
+};
+
+export type EnrollmentPage = { items: EnrollmentItem[] };
+
 export type CourseData = {
   titulo: string; descripcion: string; tecnologia: string;
   nivel: CourseLevel; duracionHoras: number; costo: number;

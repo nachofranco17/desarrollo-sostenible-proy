@@ -37,4 +37,12 @@ public class AuthController {
     @GetMapping("/account")
     @RequiereAccion("cuenta.gestionar")
     public AccountView current() { return accounts.view(subjects.current()); }
+    @DeleteMapping("/account")
+    @RequiereAccion("cuenta.gestionar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(jakarta.servlet.http.HttpServletRequest request) {
+        accounts.delete(subjects.current());
+        if (request.getSession(false) != null) request.getSession(false).invalidate();
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
 }

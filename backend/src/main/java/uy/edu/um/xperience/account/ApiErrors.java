@@ -1,5 +1,6 @@
 package uy.edu.um.xperience.account;
 
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
@@ -16,8 +17,18 @@ public class ApiErrors {
     public ApiErrors(Denegaciones denials) { this.denials = denials; }
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<Map<String, String>> invalidInput(Exception error, HttpServletRequest request) {
+        markUnrecognizedField(error);
         denials.registrar(request);
         return ResponseEntity.badRequest().body(Map.of("message", "Datos inválidos. Revisá los valores y enviá únicamente los campos permitidos."));
+    }
+
+    private static void markUnrecognizedField(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof UnrecognizedPropertyException unrecognized) {
+                Denegaciones.marcarCampoNoAutorizado(unrecognized.getPropertyName());
+                return;
+            }
+        }
     }
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> status(ResponseStatusException error, HttpServletRequest request) {

@@ -1,8 +1,10 @@
 import { StrictMode, createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { api, post, patch, ApiError, type Account, type TalentProfile } from './api';
+import { api, post, patch, del, ApiError, type Account, type TalentProfile } from './api';
 import { CourseEditor, CourseList, NewCourse } from './gestion';
+import { CatalogList, CatalogDetailPage } from './catalogo';
+import { EnrollmentsPage } from './inscripciones';
 import './styles.css';
 import { StaffPage, AcceptInvitation } from './staff';
 
@@ -35,29 +37,51 @@ function AuthProvider({ children }: { children: ReactNode }) {
 // Solo decide qué mostrar; el backend vuelve a verificar el permiso en cada solicitud (R9).
 const canManageCourses = (account: Account | null) => account?.rol === 'ADMIN' || account?.rol === 'EDITOR';
 
+function backLinkFor(path: string): { to: string; label: string } | null {
+  if (path === '/catalogo') return { to: '/', label: 'Volver al inicio' };
+  if (path.startsWith('/catalogo/')) return { to: '/catalogo', label: 'Volver al catálogo' };
+  if (path === '/inscripciones' || path === '/perfil' || path === '/staff' || path === '/gestion') {
+    return { to: '/mi-cuenta', label: 'Volver a mi cuenta' };
+  }
+  if (path === '/gestion/nuevo' || path.startsWith('/gestion/')) {
+    return { to: '/gestion', label: 'Volver a cursos y proyectos' };
+  }
+  if (path === '/invitacion') return { to: '/ingresar', label: 'Volver al inicio' };
+  if (path === '/mi-cuenta' || path === '/ingresar' || path === '/registro' || path === '/') return null;
+  return { to: '/', label: 'Volver al inicio' };
+}
+
 function App() {
   const auth = useContext(Auth);
-  const wide = useLocation().pathname.startsWith('/gestion');
+  const path = useLocation().pathname;
+  const wide = path.startsWith('/gestion') || path.startsWith('/catalogo') || path.startsWith('/inscripciones');
+  const back = backLinkFor(path);
   const courses = (page: ReactNode) => canManageCourses(auth.account) ? page : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />;
   return <>
     <header><Link to="/" className="brand" aria-label="XPerience, inicio"><span className="brand-mark">X</span>XPerience</Link><span className="tagline">Tu próximo paso empieza acá.</span></header>
     <main className={wide ? 'wide' : undefined}>{!wide && <aside><span className="eyebrow">FORMACIÓN + OPORTUNIDADES</span><h1>Convertí lo que sabés<br />en tu próxima oportunidad.</h1><p>Un espacio para aprender, demostrar tus habilidades y conectar con el mundo IT.</p><div className="journey"><span>01 · Aprendé</span><span>02 · Creá</span><span>03 · Conectá</span></div></aside>}
-      <section className="panel" aria-label="Acceso a XPerience">
-        {auth.loading ? <p role="status">Cargando…</p> : auth.error ? <><p role="alert">{auth.error}</p><button onClick={() => void auth.refresh().catch(() => {})}>Reintentar</button></> :
-        <Routes>
-          <Route path="/" element={<Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
-          <Route path="/ingresar" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm />} />
-          <Route path="/registro" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm register />} />
-          <Route path="/mi-cuenta" element={auth.account ? <MyAccount account={auth.account} /> : <Navigate to="/ingresar" replace />} />
-          <Route path="/perfil" element={auth.account?.rol === 'TALENTO' ? <TalentProfilePage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
-          <Route path="/gestion" element={courses(<CourseList />)} />
-          <Route path="/invitacion" element={<AcceptInvitation />} />
-          <Route path="/staff" element={auth.account?.rol === 'ADMIN' ? <StaffPage currentUserId={auth.account.id} /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
-          <Route path="/gestion/nuevo" element={courses(<NewCourse />)} />
-          <Route path="/gestion/:id" element={courses(<CourseEditor />)} />
-          <Route path="*" element={<><h2>Página no encontrada</h2><Link to="/">Volver al inicio</Link></>} />
-        </Routes>}
-      </section>
+      <div className="panel-stack">
+        {back && <p className="back-nav"><Link to={back.to}>← {back.label}</Link></p>}
+        <section className="panel" aria-label="Acceso a XPerience">
+          {auth.loading ? <p role="status">Cargando…</p> : auth.error ? <><p role="alert">{auth.error}</p><button onClick={() => void auth.refresh().catch(() => {})}>Reintentar</button></> :
+          <Routes>
+            <Route path="/" element={<Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/ingresar" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm />} />
+            <Route path="/registro" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm register />} />
+            <Route path="/catalogo" element={<CatalogList />} />
+            <Route path="/catalogo/:id" element={<CatalogDetailPage account={auth.account} />} />
+            <Route path="/inscripciones" element={auth.account?.rol === 'TALENTO' ? <EnrollmentsPage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/mi-cuenta" element={auth.account ? <MyAccount account={auth.account} /> : <Navigate to="/ingresar" replace />} />
+            <Route path="/perfil" element={auth.account?.rol === 'TALENTO' ? <TalentProfilePage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/gestion" element={courses(<CourseList />)} />
+            <Route path="/invitacion" element={<AcceptInvitation />} />
+            <Route path="/staff" element={auth.account?.rol === 'ADMIN' ? <StaffPage currentUserId={auth.account.id} /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/gestion/nuevo" element={courses(<NewCourse />)} />
+            <Route path="/gestion/:id" element={courses(<CourseEditor />)} />
+            <Route path="*" element={<><h2>Página no encontrada</h2><p>No encontramos esa ruta.</p></>} />
+          </Routes>}
+        </section>
+      </div>
     </main><footer>XPerience · Plataforma de formación y empleabilidad</footer>
   </>;
 }
@@ -106,6 +130,7 @@ function AccessForm({ register = false }: { register?: boolean }) {
       <button type="submit" disabled={busy}>{busy ? 'Procesando…' : register ? 'Crear cuenta de Talento' : 'Ingresar'}</button>
     </form>
     <p className="switch">{register ? '¿Ya tenés una cuenta? ' : '¿Es tu primera vez? '}<Link to={register ? '/ingresar' : '/registro'}>{register ? 'Iniciá sesión' : 'Registrate como Talento'}</Link></p>
+    <p className="switch"><Link to="/catalogo">Ver catálogo de cursos y proyectos</Link></p>
     <p className="staff-note">Si sos parte de una empresa, ingresá con tu cuenta habilitada. El resto del staff se incorpora por invitación.</p>
   </div>;
 }
@@ -117,6 +142,15 @@ function MyAccount({ account }: { account: Account }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  async function deleteAccount() {
+    setBusy(true); setError('');
+    try {
+      await del('/account');
+      auth.clear(); navigate('/ingresar', { replace: true });
+    } catch { setError('No pudimos eliminar tu cuenta. Intentá nuevamente.'); }
+    finally { setBusy(false); }
+  }
   async function logout() {
     setBusy(true); setError('');
     try {
@@ -136,9 +170,17 @@ function MyAccount({ account }: { account: Account }) {
     <dl><dt>Nombre</dt><dd>{account.nombre} {account.apellido}</dd><dt>Correo</dt><dd>{account.correo}</dd><dt>Rol</dt><dd>{roles[account.rol]}</dd>{account.empresaNombre && <><dt>Empresa</dt><dd>{account.empresaNombre}</dd></>}</dl>
     {message && <p className="notice" role="status">{message}</p>}{error && <p className="notice error" role="alert">{error}</p>}
     {account.rol === 'TALENTO' && <Link className="button-link" to="/perfil">Ver mi perfil</Link>}
+    {account.rol === 'TALENTO' && <Link className="button-link" to="/inscripciones">Mis inscripciones</Link>}
+    <Link className="button-link" to="/catalogo">Ver catálogo</Link>
     {canManageCourses(account) && <Link className="button-link" to="/gestion">Gestionar cursos y proyectos</Link>}
     {account.rol === 'ADMIN' && <Link className="button-link" to="/staff">Gestionar staff</Link>}
     <button disabled={busy} onClick={verify}>Verificar acceso</button><button disabled={busy} className="secondary" onClick={logout}>Cerrar sesión</button>
+    {deleting ? <section role="dialog" aria-labelledby="delete-account-title">
+      <h3 id="delete-account-title">Eliminar mi cuenta</h3>
+      <p>Perderás el acceso a tu cuenta en todos los dispositivos. Esta acción no se puede deshacer desde la aplicación.</p>
+      <button disabled={busy} onClick={() => void deleteAccount()}>Confirmar eliminación</button>
+      <button disabled={busy} onClick={() => setDeleting(false)}>Cancelar</button>
+    </section> : <button disabled={busy} className="secondary" onClick={() => setDeleting(true)}>Eliminar mi cuenta</button>}
   </>;
 }
 
@@ -309,7 +351,7 @@ function TalentProfilePage() {
   }
 
   if (loading) return <p role="status">Cargando perfil…</p>;
-  if (!profile) return <><p className="notice error" role="alert">{error || 'No pudimos cargar el perfil.'}</p><Link to="/mi-cuenta">Volver a mi cuenta</Link></>;
+  if (!profile) return <p className="notice error" role="alert">{error || 'No pudimos cargar el perfil.'}</p>;
 
   return <>
     <span className="eyebrow">PERFIL DEL TALENTO</span>
@@ -363,7 +405,6 @@ function TalentProfilePage() {
           : <ul>{profile.logros.map((item) => <li key={item.titulo}>{item.titulo} · {item.origen}</li>)}</ul>}
       </section>
       <button type="button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}>Editar perfil</button>
-      <Link className="button-link secondary" to="/mi-cuenta">Volver a mi cuenta</Link>
     </> : <form onSubmit={save}>
       <section className="profile-section" aria-label="Editar datos personales">
         <h3>Datos personales y contacto</h3>

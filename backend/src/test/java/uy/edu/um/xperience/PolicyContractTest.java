@@ -4,7 +4,10 @@ import java.nio.file.*;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.*;
 import org.springframework.context.annotation.Import;
@@ -30,10 +33,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(PolicyContractTest.Probes.class)
+@ExtendWith(OutputCaptureExtension.class)
 class PolicyContractTest {
     @Autowired MockMvc mvc;
     @Autowired AuthorizationService policy;
-    @Autowired Sujetos subjects;
+    @MockitoSpyBean Sujetos subjects;
     @Autowired Usuarios users;
     @Autowired Membresias memberships;
     @Autowired AccountRepository accounts;
@@ -48,6 +52,8 @@ class PolicyContractTest {
         @GetMapping("/api/test/no-action") public String missing() { return "must never run"; }
         @GetMapping("/api/test/unknown-action") @RequiereAccion("no.declarada")
         public String unknown() { return "must never run"; }
+        @GetMapping("/test/outside-api") @RequiereAccion("catalogo.ver")
+        public String outsideApi() { return "must never run"; }
     }
     private Sujeto admin() {
         String email = UUID.randomUUID() + "@example.test";
@@ -61,7 +67,22 @@ class PolicyContractTest {
             verify(registry).denegado(eq(subject), anyString(), eq(path));
         }
     }
-    @Test void policyDatabaseErrorsDenyBothFunctionAndRowsAndAreReportedByThePep() throws Exception {
+    @Test void errorPageAndRoutesOutsideApiCannotBeRequestedDirectly() throws Exception {
+        mvc.perform(get("/error")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/test/outside-api")).andExpect(status().isUnauthorized());
+        var subject = admin();
+        mvc.perform(get("/error").with(user(subject.usuarioId().toString()))).andExpect(status().isForbidden());
+        verify(registry).denegado(eq(subject), anyString(), eq("/error"));
+    }
+    @Test void denialsKeepTheirGenericResponseWhenTheAccessLogFails() throws Exception {
+        var subject = admin();
+        doThrow(new IllegalStateException("simulated access log outage")).when(registry).denegado(any(), any(), any());
+        mvc.perform(get("/api/test/no-action"))
+            .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.message").value("Credenciales o sesión inválidas."));
+        mvc.perform(get("/api/test/no-action").with(user(subject.usuarioId().toString())))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value("Acceso denegado."));
+    }
+    @Test void policyDatabaseErrorsDenyBothFunctionAndRowsAndAreReportedByThePep(CapturedOutput output) throws Exception {
         var subject = admin();
         doThrow(new DataAccessResourceFailureException("simulated outage")).when(permissions).findByRolAndAccion(anyString(), anyString());
         assertThat(policy.puedeInvocar(subject, "cuenta.gestionar")).isFalse();
@@ -69,6 +90,23 @@ class PolicyContractTest {
         assertThat(users.findAll(policy.filtrar(subject, "cuenta.gestionar", Usuario.class))).isEmpty();
         mvc.perform(get("/api/account").with(user(subject.usuarioId().toString()))).andExpect(status().isForbidden());
         verify(registry).denegado(eq(subject), eq("cuenta.gestionar"), eq("/api/account"));
+        assertThat(output).contains("Fallo la evaluacion de la politica (puedeInvocar de cuenta.gestionar); se deniega",
+            "simulated outage");
+    }
+    @Test void errorsInsideThePepDenyGrantedActionsAndAreLoggedAndReported(CapturedOutput output) throws Exception {
+        var subject = admin();
+        doThrow(new IllegalStateException("simulated subject failure")).when(subjects).resolve(any());
+        mvc.perform(get("/api/account").with(user(subject.usuarioId().toString())))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value("Acceso denegado."));
+        verify(registry).denegado(any(), eq("cuenta.gestionar"), eq("/api/account"));
+        assertThat(output).contains("Fallo el PEP evaluando /api/account; se deniega", "simulated subject failure");
+    }
+    @Test void errorsWhileEvaluatingLoginDenyItBeforeCheckingCredentials(CapturedOutput output) throws Exception {
+        doThrow(new IllegalStateException("simulated subject failure")).when(subjects).current();
+        mvc.perform(post("/api/auth/login").with(csrf()).param("correo", "absent@example.test").param("password", "secret"))
+            .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.message").value("Credenciales o sesión inválidas."));
+        verify(registry).denegado(any(), eq("sesion.iniciar"), eq("/api/auth/login"));
+        assertThat(output).contains("Fallo la evaluacion de sesion.iniciar; se deniega", "simulated subject failure");
     }
     @Test void loginAndLogoutUseThePermissionTableEvenThoughTheyAreSecurityFilters() throws Exception {
         doReturn(List.of()).when(permissions).findByRolAndAccion("VISITANTE", "sesion.iniciar");
@@ -87,6 +125,57 @@ class PolicyContractTest {
             .andExpect(status().isBadRequest());
         verify(registry).denegado(eq(Sujeto.visitante()), eq("cuenta.registrar"), eq("/api/auth/register"));
     }
+
+    // RS12: un campo protegido rechaza toda la actualización
+    // y el intento queda registrado en la auditoría.
+    @Test
+    void forbiddenProfileFieldsRejectWholeUpdateAndAreReported()
+            throws Exception {
+        String email = UUID.randomUUID() + "@example.test";
+
+        mvc.perform(
+            post("/api/auth/register")
+                .with(csrf())
+                .contentType("application/json")
+                .content("""
+                    {
+                      "correo": "%s",
+                      "nombre": "Ana",
+                      "apellido": "Prueba",
+                      "password": "una frase suficientemente larga"
+                    }
+                    """.formatted(email))
+        ).andExpect(status().isAccepted());
+
+        var account = accounts.byEmail(email).orElseThrow();
+        var subject = Sujeto.from(account);
+
+        clearInvocations(registry);
+
+        mvc.perform(
+            patch("/api/profile/me")
+                .with(user(account.id().toString()))
+                .with(csrf())
+                .contentType("application/json")
+                .content("""
+                    {
+                      "nombre": "NoDebeGuardarse",
+                      "rol": "ADMIN"
+                    }
+                    """)
+        ).andExpect(status().isBadRequest());
+
+        assertThat(
+            accounts.byEmail(email).orElseThrow().nombre()
+        ).isEqualTo("Ana");
+
+        verify(registry).denegado(
+            eq(subject),
+            eq("perfil.gestionar"),
+            eq("/api/profile/me")
+        );
+    }
+
     @Test void ownAccountQueriesCannotReturnAnotherAccountAndFieldsNeverExposeSecrets() {
         var first = admin(); var second = admin();
         var scope = policy.filtrar(first, "cuenta.gestionar", Usuario.class);

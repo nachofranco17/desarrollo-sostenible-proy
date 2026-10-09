@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import uy.edu.um.xperience.account.RegisterRequest;
+import uy.edu.um.xperience.security.Denegaciones;
 
 /**
  * Parsea el body del PATCH con allowlist explícita.
@@ -43,6 +44,8 @@ public final class ProfileUpdateParser {
         while (names.hasNext()) {
             String field = names.next();
             if (!ALLOWED_FIELDS.contains(field)) {
+                // RS18: solo el nombre técnico del campo; nunca el valor enviado.
+                Denegaciones.marcarCampoNoAutorizado(field);
                 throw new ProfileValidationException(
                     "Datos inválidos. Revisá los campos enviados e incluí únicamente los permitidos.");
             }

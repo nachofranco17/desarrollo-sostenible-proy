@@ -2,6 +2,8 @@ package uy.edu.um.xperience.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authorization.*;
@@ -14,6 +16,7 @@ import org.springframework.web.util.ServletRequestPathUtils;
 
 @Component
 public class PolicyEnforcementPoint implements AuthorizationManager<RequestAuthorizationContext> {
+    private static final Logger log = LoggerFactory.getLogger(PolicyEnforcementPoint.class);
     private final ObjectProvider<RequestMappingHandlerMapping> mapping;
     private final Sujetos subjects;
     private final EvaluadorPolitica policy;
@@ -28,14 +31,32 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
         try {
             if (!ServletRequestPathUtils.hasParsedRequestPath(request)) ServletRequestPathUtils.parseAndCache(request);
             var chain = mapping.getObject().getHandler(request);
-            if (chain == null || !(chain.getHandler() instanceof HandlerMethod handler)) return new AuthorizationDecision(false);
+            if (chain == null || !(chain.getHandler() instanceof HandlerMethod handler)) {
+                Denegaciones.marcarRolDenegado(request);
+                return new AuthorizationDecision(false);
+            }
             var action = handler.getMethodAnnotation(RequiereAccion.class);
-            if (action == null) return new AuthorizationDecision(false);
+            if (action == null) {
+                Denegaciones.marcarRolDenegado(request);
+                return new AuthorizationDecision(false);
+            }
             request.setAttribute(Denegaciones.ACTION, action.value());
             if ("invitacion.aceptar".equals(action.value())) {
-                return new AuthorizationDecision(invitations.valid(request.getHeader(InvitationTokens.HEADER)));
+                boolean allowed = invitations.valid(request.getHeader(InvitationTokens.HEADER));
+                if (!allowed) {
+                    Denegaciones.marcarRolDenegado(request);
+                }
+                return new AuthorizationDecision(allowed);
             }
-            return new AuthorizationDecision(policy.puedeInvocar(subjects.resolve(authentication.get()), action.value()));
-        } catch (Exception error) { return new AuthorizationDecision(false); }
+            boolean allowed = policy.puedeInvocar(subjects.resolve(authentication.get()), action.value());
+            if (!allowed) {
+                Denegaciones.marcarRolDenegado(request);
+            }
+            return new AuthorizationDecision(allowed);
+        } catch (Exception error) {
+            log.error("Fallo el PEP evaluando {}; se deniega", request.getRequestURI(), error);
+            Denegaciones.marcarRolDenegado(request);
+            return new AuthorizationDecision(false);
+        }
     }
 }

@@ -16,6 +16,17 @@ public class StaffRoleService {
         this.memberships = memberships; this.policy = policy;
     }
     @Transactional
+    public void deactivate(Sujeto subject, UUID memberId) {
+        try {
+            var permitted = policy.filtrar(subject, "staff.dar_baja", Membresia.class);
+            var member = memberships.findOne(permitted.and((root, query, cb) -> cb.equal(root.get("usuarioId"), memberId)))
+                .orElseThrow(() -> new AccessDeniedException("Acceso denegado"));
+            if (!policy.autorizar(subject, "staff.dar_baja", member)) throw new AccessDeniedException("Acceso denegado");
+            member.estado = "BAJA";
+            memberships.saveAndFlush(member);
+        } catch (DataAccessException error) { throw new AccessDeniedException("Acceso denegado", error); }
+    }
+    @Transactional
     public void assign(Sujeto subject, UUID memberId, StaffRole role) {
         if (role == null || memberId == null) throw new AccessDeniedException("Acceso denegado");
         try {

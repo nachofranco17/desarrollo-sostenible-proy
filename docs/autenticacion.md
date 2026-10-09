@@ -17,6 +17,7 @@ Todas las respuestas de error usan `{ "message": "..." }`. La sesión se conserv
 | `POST /api/auth/login` | Form URL encoded: `correo`, `password` | 204 y sesión autenticada; 401 genérico si falla |
 | `GET /api/account` | Sesión activa y permiso `cuenta.gestionar` | 200: datos propios, tipo, rol y empresa; 401 sin sesión; 403 al revocar acceso |
 | `POST /api/auth/logout` | Cookie de sesión y CSRF | 204; elimina la sesión y la cookie |
+| `DELETE /api/account` | Sesión activa y CSRF | 204; elimina lógicamente la propia cuenta y cierra la sesión; las demás pierden acceso en su próxima solicitud |
 | `POST /api/auth/reauthenticate` | JSON con `password`, sesión de Administrador y CSRF | 204 si la contraseña actual coincide; 401 si es incorrecta |
 | `PATCH /api/staff/{usuarioId}/rol` | JSON con `rol`: `ADMIN`, `RECLUTADOR` o `EDITOR`, sesión, CSRF y reautenticación vigente | 204; solo Administrador de la misma empresa, sobre otro miembro activo |
 
@@ -55,9 +56,9 @@ Las lecturas de negocio usan Spring Data JPA con Specifications del evaluador, i
 
 El PEP exige `@RequiereAccion` y consulta `puedeInvocar` antes del handler. Registro usa `cuenta.registrar`, lectura de cuenta usa `cuenta.gestionar`, reautenticación usa `sesion.reautenticar` y cambio de rol usa `staff.cambiar_rol`. Un filtro aplica `sesion.iniciar` y `sesion.cerrar` antes de los filtros de login/logout de Spring. Una ruta sin acción declarada o sin permiso se deniega; los errores del evaluador tampoco conceden acceso.
 
-`GET /api/auth/csrf` es infraestructura de Spring Security implementada en el filtro, no un controller de negocio sin anotación. Solo entrega el token antifalsificación de la sesión. `/error` y los despachos de error están habilitados sin detalles internos. CSRF y `anyRequest().denyAll()` se mantienen.
+`GET /api/auth/csrf` es infraestructura de Spring Security implementada en el filtro, no un controller de negocio sin anotación. Solo entrega el token antifalsificación de la sesión. Solo los despachos internos de error están habilitados, sin detalles internos; un pedido directo a `/error` se deniega. CSRF y `anyRequest().denyAll()` se mantienen.
 
-La prueba de reautenticación se guarda del lado del servidor, vinculada al usuario, empresa y rol de la sesión. Vence a los cinco minutos (`security.reauthentication-validity`) y una contraseña incorrecta invalida la confirmación previa. Las reglas de reautenticación y exclusión de la propia membresía están en el evaluador. Las denegaciones del PEP, filtros, handlers y campos inválidos se comunican a `RegistroAccesos`, cuyo almacenamiento definitivo corresponde a R18/R19.
+La prueba de reautenticación se guarda del lado del servidor, vinculada al usuario, empresa y rol de la sesión. Vence a los cinco minutos (`security.reauthentication-validity`) y una contraseña incorrecta invalida la confirmación previa. Las reglas de reautenticación y exclusión de la propia membresía están en el evaluador. Las denegaciones del PEP, filtros, handlers y campos inválidos se comunican a `RegistroAccesos` (RS18 emite el evento estructurado; RS19 protege el almacén). Detalle en [rs18-registro-accesos-denegados.md](seguridad/rs18-registro-accesos-denegados.md).
 
 La página protegida del frontend es `/mi-cuenta`. Su guardia consulta `/api/account` al cargar y al recuperar el foco; el servidor aplica la protección independientemente del navegador. **Verificar acceso** realiza una nueva consulta al backend.
 

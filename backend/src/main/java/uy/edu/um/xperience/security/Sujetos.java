@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import uy.edu.um.xperience.account.AccountRepository;
 @Service
 public class Sujetos {
+    // Session authentication stores identity only. Never cache a role or membership across requests (RS16).
     private final AccountRepository accounts;
     public Sujetos(AccountRepository accounts) { this.accounts = accounts; }
     public Sujeto current() { return resolve(SecurityContextHolder.getContext().getAuthentication()); }

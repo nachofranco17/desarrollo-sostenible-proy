@@ -34,6 +34,94 @@ class StaffInvitationIntegrationTest {
     @Autowired AuthorizationService policy;
     @MockitoBean InvitationDelivery delivery;
 
+    @Test void rs7NewTalentCanUseOwnResourcesButNeverCompanyOperations() throws Exception {
+        var browser = new Browser(); String email = email();
+        assertThat(browser.write("POST", "/auth/register",
+            json.writeValueAsString(new RegisterRequest(email, "Talento", "RS7", PASSWORD)), true, null).statusCode()).isEqualTo(202);
+        var talent = accounts.byEmail(email).orElseThrow();
+        assertThat(talent.tipoCuenta()).isEqualTo("TALENTO");
+        assertThat(talent.empresaId()).isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM membresia WHERE usuario_id = ?", Integer.class, talent.id())).isZero();
+        assertThat(browser.login(email).statusCode()).isEqualTo(204);
+        assertThat(browser.get("/profile/me").statusCode()).isEqualTo(200);
+        assertThat(browser.write("PATCH", "/profile/me", "{\"nombre\":\"Mi perfil\"}", true, null).statusCode()).isEqualTo(200);
+        assertThat(accounts.byId(talent.id()).orElseThrow().nombre()).isEqualTo("Mi perfil");
+        for (String action : List.of("catalogo.ver", "inscripcion.crear", "postulacion.crear")) {
+            assertThat(policy.allowed(talent.id(), action, ResourceAccess.publication(true))).as(action).isTrue();
+            assertThat(policy.allowed(talent.id(), action, ResourceAccess.publication(false))).as(action + " no publicado").isFalse();
+        }
+        assertThat(policy.allowed(talent.id(), "perfil.gestionar", ResourceAccess.own(talent.id()))).isTrue();
+        assertThat(policy.allowed(talent.id(), "perfil.gestionar", ResourceAccess.own(UUID.randomUUID()))).isFalse();
+        var subject = Sujeto.from(talent);
+        for (String action : companyActions()) {
+            // Some action names also have a PROPIO grant (e.g. curriculum.descargar).
+            // That never permits the company's resource or another user's data.
+            assertThat(policy.autorizar(subject, action, new ResourceAccess(UUID.randomUUID(), UUID.randomUUID(), true)))
+                .as(action).isFalse();
+        }
+        assertThat(browser.get("/company/courses").statusCode()).isEqualTo(403);
+        assertThat(browser.write("POST", "/company/courses", "{}", true, null).statusCode()).isEqualTo(403);
+        assertThat(browser.get("/staff").statusCode()).isEqualTo(403);
+        assertThat(browser.invite(email()).statusCode()).isEqualTo(403);
+        assertThat(browser.assign(UUID.randomUUID(), "ADMIN").statusCode()).isEqualTo(403);
+    }
+
+    @Test void rs7AcceptedInvitationWithoutRoleDeniesEveryCompanyAction() throws Exception {
+        var e1 = company(); String email = email(); String token = invite(e1.browser(), email);
+        var guest = new Browser();
+        assertThat(guest.accept(token, acceptance(), true).statusCode()).isEqualTo(204);
+        var member = accounts.byEmail(email).orElseThrow();
+        assertThat(member.membresiaEstado()).isEqualTo("ACTIVA");
+        assertThat(member.rol()).isNull();
+        assertThat(member.empresaId()).isEqualTo(e1.id());
+        var subject = Sujeto.from(member);
+        for (String action : jdbc.queryForList("SELECT DISTINCT accion FROM permiso", String.class)) {
+            assertThat(policy.puedeInvocar(subject, action)).as(action).isFalse();
+            assertThat(policy.autorizar(subject, action, new ResourceAccess(member.id(), e1.id(), true))).as(action).isFalse();
+        }
+        assertThat(guest.login(email).statusCode()).isEqualTo(401);
+        assertThat(guest.get("/staff").statusCode()).isEqualTo(401);
+        assertThat(guest.get("/company/courses").statusCode()).isEqualTo(401);
+        assertThat(guest.write("POST", "/company/courses", "{}", true, null).statusCode()).isEqualTo(401);
+        assertThat(guest.invite(email()).statusCode()).isEqualTo(401);
+        assertThat(guest.assign(member.id(), "ADMIN").statusCode()).isEqualTo(401);
+        assertThat(accounts.byId(member.id()).orElseThrow().rol()).isNull();
+    }
+
+    @Test void rs7ExplicitRecruiterAssignmentGrantsOnlyRecruitingWithinItsCompany() throws Exception {
+        var e1 = company(); var e2 = company(); String email = email();
+        String token = invite(e1.browser(), email); var staff = new Browser();
+        assertThat(staff.accept(token, acceptance(), true).statusCode()).isEqualTo(204);
+        UUID id = accounts.byEmail(email).orElseThrow().id();
+        assertThat(staff.login(email).statusCode()).isEqualTo(401);
+        assertThat(policy.allowed(id, "oferta.gestionar", ResourceAccess.company(e1.id()))).isFalse();
+        assertThat(e1.browser().reauth().statusCode()).isEqualTo(204);
+        assertThat(e1.browser().assign(id, "RECLUTADOR").statusCode()).isEqualTo(204);
+        assertThat(staff.login(email).statusCode()).isEqualTo(204);
+        var subject = Sujeto.from(accounts.byId(id).orElseThrow());
+        var recruiting = Set.of("oferta.gestionar", "postulacion.ver_listado", "postulacion.cambiar_estado",
+            "perfil.ver_postulante", "curriculum.descargar");
+        for (String action : companyActions()) {
+            assertThat(policy.puedeInvocar(subject, action)).as(action).isEqualTo(recruiting.contains(action));
+        }
+        for (String action : List.of("oferta.gestionar", "postulacion.ver_listado")) {
+            assertThat(policy.allowed(id, action, ResourceAccess.company(e1.id()))).as(action + " E1").isTrue();
+            assertThat(policy.allowed(id, action, ResourceAccess.company(e2.id()))).as(action + " E2").isFalse();
+        }
+        assertThat(policy.autorizar(subject, "postulacion.cambiar_estado",
+            new TransicionPostulacion(e1.id(), "enviada", "preseleccionada"))).isTrue();
+        assertThat(policy.autorizar(subject, "postulacion.cambiar_estado",
+            new TransicionPostulacion(e2.id(), "enviada", "preseleccionada"))).isFalse();
+        assertThat(staff.get("/company/courses").statusCode()).isEqualTo(403);
+        assertThat(staff.get("/staff").statusCode()).isEqualTo(403);
+        assertThat(staff.invite(email()).statusCode()).isEqualTo(403);
+        assertThat(staff.assign(e1.adminId(), "ADMIN").statusCode()).isEqualTo(403);
+    }
+
+    private List<String> companyActions() {
+        return jdbc.queryForList("SELECT DISTINCT accion FROM permiso WHERE alcance IN ('ORG', 'POSTULANTE')", String.class);
+    }
+
     @Test void invitationAcceptanceAndRoleChangesApplyImmediately() throws Exception {
         var company = company(); var admin = company.browser();
         String email = email(); String token = invite(admin, email);
