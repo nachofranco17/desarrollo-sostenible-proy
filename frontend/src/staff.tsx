@@ -12,6 +12,7 @@ export function StaffPage({ currentUserId }: { currentUserId: string }) {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [pending, setPending] = useState<{ member: Member; rol?: string } | null>(null);
   async function reload() { setMembers(await api<Member[]>('/staff')); setLoaded(true); }
   useEffect(() => { void reload().catch(e => setError(e.message)); }, []);
   async function invite(event: FormEvent<HTMLFormElement>) {
@@ -24,19 +25,41 @@ export function StaffPage({ currentUserId }: { currentUserId: string }) {
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo enviar la invitación.'); }
     finally { setBusy(false); }
   }
-  async function assign(event: FormEvent<HTMLFormElement>, member: Member) {
+  function assign(event: FormEvent<HTMLFormElement>, member: Member) {
+    event.preventDefault();
+    setError(''); setMessage('');
+    setPending({ member, rol: String(new FormData(event.currentTarget).get('rol')) });
+  }
+  async function confirm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = event.currentTarget; const data = new FormData(form);
+    if (!pending) return;
     setBusy(true); setError(''); setMessage('');
     try {
       await post('/auth/reauthenticate', JSON.stringify({ password: data.get('password') }));
-      await patch(`/staff/${member.usuarioId}/rol`, JSON.stringify({ rol: data.get('rol') }));
-      setMessage('Rol actualizado. Los permisos ya están vigentes.'); await reload();
-    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo cambiar el rol.'); }
+      form.reset();
+      if (pending.rol) {
+        await patch(`/staff/${pending.member.usuarioId}/rol`, JSON.stringify({ rol: pending.rol }));
+        setMessage('Rol actualizado. Los permisos ya están vigentes.');
+      } else {
+        await post(`/staff/${pending.member.usuarioId}/baja`);
+        setMessage('Miembro dado de baja. Su acceso fue revocado.');
+      }
+      setPending(null); await reload();
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar la operación.'); }
     finally { form.reset(); setBusy(false); }
   }
   return <>
     <h2>Staff de la empresa</h2>
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
+    {pending && <section role="dialog" aria-labelledby="reauth-title">
+      <h3 id="reauth-title">Verificar identidad</h3>
+      <p>{pending.rol ? 'Cambiar rol' : 'Dar de baja'} de {pending.member.correo}. Ingresá tu contraseña para confirmar.</p>
+      <form onSubmit={e => void confirm(e)}>
+        <label>Tu contraseña de administrador<input name="password" type="password" autoComplete="current-password" required maxLength={128} autoFocus /></label>
+        <button disabled={busy}>Confirmar operación</button>
+        <button type="button" disabled={busy} onClick={() => { setPending(null); setError(''); }}>Cancelar</button>
+      </form>
+    </section>}
     <form onSubmit={invite}><h3>Invitar un miembro</h3>
       <label>Correo del invitado<input name="correo" type="email" required maxLength={254} /></label>
       <p>La invitación vence en 48 horas. Una vez aceptada, asignale un rol para habilitar su acceso.</p>
@@ -53,9 +76,10 @@ export function StaffPage({ currentUserId }: { currentUserId: string }) {
         <select id={`rol-${member.usuarioId}`} name="rol" defaultValue={member.rol ?? 'RECLUTADOR'}>
           {Object.entries(roleNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
-        <label>Tu contraseña de administrador<input name="password" type="password" autoComplete="current-password" required maxLength={128} /></label>
-        <button disabled={busy}>Asignar rol</button>
+        <button disabled={busy || pending !== null}>Asignar rol</button>
       </form>}
+      {member.estado === 'ACTIVA' && member.usuarioId !== currentUserId && <button type="button" disabled={busy || pending !== null}
+        onClick={() => { setError(''); setMessage(''); setPending({ member }); }}>Dar de baja</button>}
     </section>)}
   </>;
 }

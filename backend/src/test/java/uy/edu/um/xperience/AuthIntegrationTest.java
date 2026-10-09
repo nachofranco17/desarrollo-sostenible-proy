@@ -339,6 +339,48 @@ class AuthIntegrationTest {
     }
 
     private record CompanyFixture(UUID companyId, Account admin) {}
+    @Test
+    void staffDeactivationRequiresPasswordAndRevokesExistingSessions() throws Exception {
+        var company = company(); var other = company(); var member = acceptedStaff(company.companyId());
+        jdbc.update("UPDATE membresia SET rol = 'EDITOR' WHERE usuario_id = ?", member.id());
+        var staff = new Browser(); staff.login(member.correo(), PASSWORD);
+        var admin = new Browser(); admin.login(company.admin().correo(), PASSWORD);
+        String route = "/staff/" + member.id() + "/baja";
+        assertThat(admin.post(route, "", "application/json", true).statusCode()).isEqualTo(403);
+        assertThat(admin.reauthenticate("incorrecta").statusCode()).isEqualTo(401);
+        assertThat(admin.post(route, "", "application/json", true).statusCode()).isEqualTo(403);
+        assertThat(accounts.byId(member.id()).orElseThrow().membresiaEstado()).isEqualTo("ACTIVA");
+        var outsider = new Browser(); outsider.login(other.admin().correo(), PASSWORD); outsider.reauthenticate(PASSWORD);
+        assertThat(outsider.post(route, "", "application/json", true).statusCode()).isEqualTo(403);
+        admin.reauthenticate(PASSWORD);
+        assertThat(admin.post(route, "", "application/json", false).statusCode()).isEqualTo(403);
+        assertThat(admin.post("/staff/" + company.admin().id() + "/baja", "", "application/json", true).statusCode()).isEqualTo(403);
+        assertThat(admin.post(route, "", "application/json", true).statusCode()).isEqualTo(204);
+        assertThat(accounts.byId(member.id()).orElseThrow().membresiaEstado()).isEqualTo("BAJA");
+        assertThat(staff.get("/account").statusCode()).isEqualTo(403);
+        assertThat(staff.get("/account").statusCode()).isEqualTo(401);
+        assertThat(new Browser().login(member.correo(), PASSWORD).statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void administrativeSessionExpiresBeforeCommonSessionAfterSameInactivity() throws Exception {
+        var company = company(); var admin = new Browser(); admin.login(company.admin().correo(), PASSWORD);
+        var common = new Browser(); String email = email(); common.register(email); common.login(email, PASSWORD);
+        UUID commonId = accounts.byEmail(email).orElseThrow().id();
+        assertThat(jdbc.queryForObject("SELECT MAX_INACTIVE_INTERVAL FROM SPRING_SESSION WHERE PRINCIPAL_NAME = ?", Integer.class,
+            company.admin().id().toString())).isEqualTo(600);
+        assertThat(jdbc.queryForObject("SELECT MAX_INACTIVE_INTERVAL FROM SPRING_SESSION WHERE PRINCIPAL_NAME = ?", Integer.class,
+            commonId.toString())).isEqualTo(1800);
+        // Advance persisted inactivity by eleven minutes, without waiting in real time.
+        long lastAccess = System.currentTimeMillis() - 11 * 60_000;
+        for (UUID id : List.of(company.admin().id(), commonId)) {
+            jdbc.update("UPDATE SPRING_SESSION SET LAST_ACCESS_TIME = ?, EXPIRY_TIME = CAST(? AS BIGINT) + MAX_INACTIVE_INTERVAL * 1000 WHERE PRINCIPAL_NAME = ?",
+                lastAccess, lastAccess, id.toString());
+        }
+        assertThat(admin.get("/account").statusCode()).isEqualTo(401);
+        assertThat(common.get("/account").statusCode()).isEqualTo(200);
+    }
+
     private CompanyFixture company() {
         String email = email();
         UUID id = provisioner.create("Empresa permisos", new RegisterRequest(email, "Admin", "Prueba", PASSWORD), "test-suite");

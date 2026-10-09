@@ -20,4 +20,10 @@ public class StaffRoleController {
     public void assign(@PathVariable UUID memberId, @Valid @RequestBody AssignRoleRequest input) {
         roles.assign(subjects.current(), memberId, input.rol());
     }
+    @PostMapping("/{memberId}/baja")
+    @RequiereAccion("staff.dar_baja")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivate(@PathVariable UUID memberId) {
+        roles.deactivate(subjects.current(), memberId);
+    }
 }

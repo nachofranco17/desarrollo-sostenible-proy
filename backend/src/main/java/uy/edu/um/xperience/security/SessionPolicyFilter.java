@@ -17,12 +17,23 @@ public class SessionPolicyFilter extends OncePerRequestFilter {
     private final EvaluadorPolitica policy;
     private final Denegaciones denials;
     private final ObjectMapper json;
-    public SessionPolicyFilter(Sujetos subjects, EvaluadorPolitica policy, Denegaciones denials, ObjectMapper json) {
+    private final SessionLifetime lifetime;
+    public SessionPolicyFilter(Sujetos subjects, EvaluadorPolitica policy, Denegaciones denials, ObjectMapper json, SessionLifetime lifetime) {
         this.subjects = subjects; this.policy = policy; this.denials = denials; this.json = json;
+        this.lifetime = lifetime;
     }
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String path = request.getRequestURI().substring(request.getContextPath().length());
+        var session = request.getSession(false);
+        if (session != null) {
+            try { lifetime.apply(session, subjects.current()); }
+            catch (RuntimeException error) {
+                // Keep the shorter limit on resolution errors; the PEP still denies domain access.
+                lifetime.restrict(session);
+                log.error("Fallo al resolver el rol para la vigencia de sesión", error);
+            }
+        }
         // CSRF bootstrap is framework infrastructure, not a domain operation or an unannotated controller.
         if ("GET".equals(request.getMethod()) && "/api/auth/csrf".equals(path)) {
             CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());

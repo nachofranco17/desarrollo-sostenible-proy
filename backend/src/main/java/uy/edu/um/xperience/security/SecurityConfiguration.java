@@ -23,11 +23,11 @@ public class SecurityConfiguration {
     }
     @Bean SecurityFilterChain security(HttpSecurity http, UserDetailsService users, PasswordEncoder passwords,
             PolicyEnforcementPoint pep, Sujetos subjects, EvaluadorPolitica policy, Denegaciones denials,
-            ObjectMapper json) throws Exception {
+            ObjectMapper json, SessionLifetime lifetime) throws Exception {
         var provider = new DaoAuthenticationProvider(users);
         provider.setPasswordEncoder(passwords);
         http.authenticationProvider(provider);
-        http.addFilterBefore(new SessionPolicyFilter(subjects, policy, denials, json), LogoutFilter.class);
+        http.addFilterBefore(new SessionPolicyFilter(subjects, policy, denials, json, lifetime), LogoutFilter.class);
         // CSRF stays enabled, including registration, login, reauthentication and logout.
         http.authorizeHttpRequests(auth -> auth
             .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
@@ -35,7 +35,10 @@ public class SecurityConfiguration {
             .anyRequest().denyAll());
         http.formLogin(login -> login.loginProcessingUrl("/api/auth/login")
             .usernameParameter("correo").passwordParameter("password")
-            .successHandler((request, response, authentication) -> response.setStatus(204))
+            .successHandler((request, response, authentication) -> {
+                lifetime.apply(request.getSession(), subjects.resolve(authentication));
+                response.setStatus(204);
+            })
             .failureHandler((request, response, error) -> {
                 denials.registrar(request);
                 Denegaciones.json(response, 401, "Correo o contraseña incorrectos.");
