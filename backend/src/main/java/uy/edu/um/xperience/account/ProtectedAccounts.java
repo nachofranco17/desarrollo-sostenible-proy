@@ -37,4 +37,14 @@ public class ProtectedAccounts {
                 subject.rol().name(), subject.empresaId(), companyName);
         } catch (DataAccessException error) { throw new AccessDeniedException("Acceso denegado", error); }
     }
+    @Transactional
+    public void delete(Sujeto subject) {
+        var user = read(subject, "cuenta.gestionar");
+        if (!policy.autorizar(subject, "cuenta.gestionar", user)) {
+            throw new AccessDeniedException("Acceso denegado");
+        }
+        // Logical deletion preserves references and revokes every session on its next request.
+        user.activo = false;
+        users.saveAndFlush(user);
+    }
 }

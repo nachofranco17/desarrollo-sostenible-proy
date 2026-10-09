@@ -37,7 +37,7 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 | `sesion.iniciar` | Iniciar sesión | GLOBAL | — | — | — | — |
 | `sesion.cerrar` | Cerrar la propia sesión | — | PROPIO | PROPIO | PROPIO | PROPIO |
 | `sesion.reautenticar` | Confirmar la identidad antes de una operación sensible (R23) | — | — | PROPIO | — | — |
-| `cuenta.gestionar` | Ver y modificar configuración de la cuenta | — | PROPIO | PROPIO | PROPIO | PROPIO |
+| `cuenta.gestionar` | Ver, modificar configuración y eliminar la propia cuenta | — | PROPIO | PROPIO | PROPIO | PROPIO |
 | `perfil.gestionar` | Ver y modificar el propio perfil | — | PROPIO | — | — | — |
 | `perfil.ver_postulante` | Ver el perfil de un postulante | — | — | POSTULANTE | POSTULANTE | — |
 | `catalogo.ver` | Buscar y ver cursos/proyectos publicados | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO |

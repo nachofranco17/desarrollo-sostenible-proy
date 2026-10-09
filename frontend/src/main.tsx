@@ -1,7 +1,7 @@
 import { StrictMode, createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { api, post, patch, ApiError, type Account, type TalentProfile } from './api';
+import { api, post, patch, del, ApiError, type Account, type TalentProfile } from './api';
 import { CourseEditor, CourseList, NewCourse } from './gestion';
 import { CatalogList, CatalogDetailPage } from './catalogo';
 import { EnrollmentsPage } from './inscripciones';
@@ -142,6 +142,15 @@ function MyAccount({ account }: { account: Account }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  async function deleteAccount() {
+    setBusy(true); setError('');
+    try {
+      await del('/account');
+      auth.clear(); navigate('/ingresar', { replace: true });
+    } catch { setError('No pudimos eliminar tu cuenta. Intentá nuevamente.'); }
+    finally { setBusy(false); }
+  }
   async function logout() {
     setBusy(true); setError('');
     try {
@@ -166,6 +175,12 @@ function MyAccount({ account }: { account: Account }) {
     {canManageCourses(account) && <Link className="button-link" to="/gestion">Gestionar cursos y proyectos</Link>}
     {account.rol === 'ADMIN' && <Link className="button-link" to="/staff">Gestionar staff</Link>}
     <button disabled={busy} onClick={verify}>Verificar acceso</button><button disabled={busy} className="secondary" onClick={logout}>Cerrar sesión</button>
+    {deleting ? <section role="dialog" aria-labelledby="delete-account-title">
+      <h3 id="delete-account-title">Eliminar mi cuenta</h3>
+      <p>Perderás el acceso a tu cuenta en todos los dispositivos. Esta acción no se puede deshacer desde la aplicación.</p>
+      <button disabled={busy} onClick={() => void deleteAccount()}>Confirmar eliminación</button>
+      <button disabled={busy} onClick={() => setDeleting(false)}>Cancelar</button>
+    </section> : <button disabled={busy} className="secondary" onClick={() => setDeleting(true)}>Eliminar mi cuenta</button>}
   </>;
 }
 

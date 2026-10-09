@@ -17,6 +17,7 @@ Todas las respuestas de error usan `{ "message": "..." }`. La sesión se conserv
 | `POST /api/auth/login` | Form URL encoded: `correo`, `password` | 204 y sesión autenticada; 401 genérico si falla |
 | `GET /api/account` | Sesión activa y permiso `cuenta.gestionar` | 200: datos propios, tipo, rol y empresa; 401 sin sesión; 403 al revocar acceso |
 | `POST /api/auth/logout` | Cookie de sesión y CSRF | 204; elimina la sesión y la cookie |
+| `DELETE /api/account` | Sesión activa y CSRF | 204; elimina lógicamente la propia cuenta y cierra la sesión; las demás pierden acceso en su próxima solicitud |
 | `POST /api/auth/reauthenticate` | JSON con `password`, sesión de Administrador y CSRF | 204 si la contraseña actual coincide; 401 si es incorrecta |
 | `PATCH /api/staff/{usuarioId}/rol` | JSON con `rol`: `ADMIN`, `RECLUTADOR` o `EDITOR`, sesión, CSRF y reautenticación vigente | 204; solo Administrador de la misma empresa, sobre otro miembro activo |
 

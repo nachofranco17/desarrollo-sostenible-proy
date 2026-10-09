@@ -340,6 +340,82 @@ class AuthIntegrationTest {
 
     private record CompanyFixture(UUID companyId, Account admin) {}
     @Test
+    void rs16RoleChangesApplyOnNextBusinessRequestWithoutReplacingSession() throws Exception {
+        var company = company(); var member = acceptedStaff(company.companyId());
+        jdbc.update("UPDATE membresia SET rol = 'RECLUTADOR' WHERE usuario_id = ?", member.id());
+        var staff = new Browser(); staff.login(member.correo(), PASSWORD);
+        String cookie = staff.sessionCookie();
+        assertThat(staff.get("/company/courses").statusCode()).isEqualTo(403);
+        var admin = new Browser(); admin.login(company.admin().correo(), PASSWORD); admin.reauthenticate(PASSWORD);
+        String route = "/staff/" + member.id() + "/rol";
+        assertThat(admin.patch(route, "{\"rol\":\"EDITOR\"}", true).statusCode()).isEqualTo(204);
+        // No /account refresh or new login before the business operation.
+        assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
+        assertThat(staff.sessionCookie()).isEqualTo(cookie);
+        assertThat(admin.patch(route, "{\"rol\":\"RECLUTADOR\"}", true).statusCode()).isEqualTo(204);
+        assertThat(staff.get("/company/courses").statusCode()).isEqualTo(403);
+        assertThat(staff.get("/account").statusCode()).isEqualTo(200);
+        assertThat(staff.sessionCookie()).isEqualTo(cookie);
+    }
+
+    @Test
+    void rs16StaffDeactivationRevokesAllOpenSessionsOnTheirNextRequest() throws Exception {
+        var company = company(); var member = acceptedStaff(company.companyId());
+        jdbc.update("UPDATE membresia SET rol = 'RECLUTADOR' WHERE usuario_id = ?", member.id());
+        var first = new Browser(); first.login(member.correo(), PASSWORD);
+        var second = new Browser(); second.login(member.correo(), PASSWORD);
+        String firstCookie = first.sessionCookie(), secondCookie = second.sessionCookie();
+        assertThat(first.get("/account").statusCode()).isEqualTo(200);
+        assertThat(second.get("/account").statusCode()).isEqualTo(200);
+        var admin = new Browser(); admin.login(company.admin().correo(), PASSWORD); admin.reauthenticate(PASSWORD);
+        assertThat(admin.post("/staff/" + member.id() + "/baja", "", "application/json", true).statusCode()).isEqualTo(204);
+        assertThat(first.get("/account").statusCode()).isEqualTo(403);
+        assertThat(second.get("/account").statusCode()).isEqualTo(403);
+        assertThat(replay(firstCookie).statusCode()).isEqualTo(401);
+        assertThat(replay(secondCookie).statusCode()).isEqualTo(401);
+        assertThat(admin.get("/account").statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void rs16AccountDeletionRevokesOtherSessionsAndCannotBeForgedWithoutCsrf() throws Exception {
+        var company = company(); var member = acceptedStaff(company.companyId());
+        jdbc.update("UPDATE membresia SET rol = 'RECLUTADOR' WHERE usuario_id = ?", member.id());
+        var first = new Browser(); first.login(member.correo(), PASSWORD);
+        var second = new Browser(); second.login(member.correo(), PASSWORD);
+        String firstCookie = first.sessionCookie(), secondCookie = second.sessionCookie();
+        assertThat(second.get("/account").statusCode()).isEqualTo(200);
+        assertThat(first.write("DELETE", "/account", "", "application/json", false).statusCode()).isEqualTo(403);
+        assertThat(accounts.byId(member.id()).orElseThrow().activo()).isTrue();
+        assertThat(first.write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(204);
+        assertThat(accounts.byId(member.id()).orElseThrow().activo()).isFalse();
+        assertThat(replay(firstCookie).statusCode()).isEqualTo(401);
+        assertThat(second.get("/account").statusCode()).isEqualTo(403);
+        assertThat(replay(secondCookie).statusCode()).isEqualTo(401);
+        assertThat(new Browser().login(member.correo(), PASSWORD).statusCode()).isEqualTo(401);
+        assertThat(accounts.byId(company.admin().id()).orElseThrow().activo()).isTrue();
+        assertThat(new Browser().write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void rs16PermissionChangesAreReadImmediatelyAfterWarmingTheSameSession() throws Exception {
+        var company = company(); var member = acceptedStaff(company.companyId());
+        jdbc.update("UPDATE membresia SET rol = 'EDITOR' WHERE usuario_id = ?", member.id());
+        var staff = new Browser(); staff.login(member.correo(), PASSWORD);
+        String cookie = staff.sessionCookie();
+        assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
+        assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
+        try {
+            jdbc.update("DELETE FROM permiso WHERE rol = 'EDITOR' AND accion = 'curso.ver_borrador'");
+            assertThat(staff.get("/company/courses").statusCode()).isEqualTo(403);
+            assertThat(staff.sessionCookie()).isEqualTo(cookie);
+        } finally {
+            jdbc.update("INSERT INTO permiso (rol, accion, alcance) VALUES ('EDITOR', 'curso.ver_borrador', 'ORG')");
+        }
+        assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
+        assertThat(staff.sessionCookie()).isEqualTo(cookie);
+    }
+
+    @Test
     void staffDeactivationRequiresPasswordAndRevokesExistingSessions() throws Exception {
         var company = company(); var other = company(); var member = acceptedStaff(company.companyId());
         jdbc.update("UPDATE membresia SET rol = 'EDITOR' WHERE usuario_id = ?", member.id());
