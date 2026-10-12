@@ -198,9 +198,20 @@ button.danger:hover { background: #fff0eb; }
 .course-table tr:last-child td { border-bottom: 0; }
 /* RF3: catálogo */
 .catalog-filters { margin-bottom: 22px; }
-.catalog-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.catalog-actions button { width: auto; margin: 0; }
-.catalog-actions .secondary { margin-top: 0; }
+.catalog-filters .field-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.catalog-action-cell { display: grid; gap: 8px; }
+.catalog-actions-spacer { visibility: hidden; line-height: 1.2; }
+.catalog-action-cell button { width: 100%; margin: 0; padding: 13px 12px; }
+.catalog-action-cell .secondary { margin-top: 0; }
+@media (max-width: 800px) {
+  .catalog-filters .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.catalog-title-cell { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.enrolled-badge { background: #d8f67a; color: #134b3c; padding: 4px 10px; font-size: 11px; letter-spacing: .3px; text-transform: uppercase; }
+.progress-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.progress-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.progress-bar { height: 8px; background: #e8ede3; border-radius: 999px; overflow: hidden; }
+.progress-bar > span { display: block; height: 100%; background: #134b3c; border-radius: 999px; }
 /* RF4: inscripción y avance */
 .catalog-enroll { margin-top: 24px; display: grid; gap: 12px; max-width: 360px; }
 .enrollment-progress { display: flex; gap: 8px; align-items: center; margin: 0; }

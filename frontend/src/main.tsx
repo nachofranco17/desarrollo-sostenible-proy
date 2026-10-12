@@ -68,8 +68,8 @@ function App() {
             <Route path="/" element={<Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
             <Route path="/ingresar" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm />} />
             <Route path="/registro" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm register />} />
-            <Route path="/catalogo" element={<CatalogList />} />
-            <Route path="/catalogo/:id" element={<CatalogDetailPage account={auth.account} />} />
+          <Route path="/catalogo" element={<CatalogList account={auth.account} />} />
+          <Route path="/catalogo/:id" element={<CatalogDetailPage account={auth.account} />} />
             <Route path="/inscripciones" element={auth.account?.rol === 'TALENTO' ? <EnrollmentsPage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
             <Route path="/mi-cuenta" element={auth.account ? <MyAccount account={auth.account} /> : <Navigate to="/ingresar" replace />} />
             <Route path="/perfil" element={auth.account?.rol === 'TALENTO' ? <TalentProfilePage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
@@ -371,22 +371,32 @@ function TalentProfilePage() {
           <dt>Ofertas laborales</dt><dd>{profile.notificarOfertas ? 'Activadas' : 'Desactivadas'}</dd>
         </dl>
       </section>
-      <section className="profile-section" aria-label="Progreso de cursos">
-        <h3>Progreso de cursos</h3>
+      <section className="profile-section" aria-label="Progreso de cursos y proyectos">
+        <h3>Progreso de cursos y proyectos</h3>
         {profile.progresoCursos.length === 0
-          ? <p className="empty-hint">Todavía no hay cursos con progreso para mostrar.</p>
-          : <ul>{profile.progresoCursos.map((item) => <li key={item.nombre}>{item.nombre}: {item.porcentajeAvance}% ({item.estado})</li>)}</ul>}
+          ? <p className="empty-hint">Todavía no hay progreso para mostrar. Inscribite desde el catálogo y actualizá el avance en Mis inscripciones.</p>
+          : <ul className="progress-list">{profile.progresoCursos.map((item) => (
+            <li key={item.nombre}>
+              <div className="progress-row">
+                <span>{item.nombre}</span>
+                <span className="badge">{item.estado === 'COMPLETADO' ? 'Completado' : 'En curso'} · {item.porcentajeAvance}%</span>
+              </div>
+              <div className="progress-bar" aria-hidden="true">
+                <span style={{ width: `${Math.min(100, Math.max(0, item.porcentajeAvance))}%` }} />
+              </div>
+            </li>
+          ))}</ul>}
       </section>
       <section className="profile-section" aria-label="Proyectos completados">
         <h3>Proyectos completados</h3>
         {profile.proyectosCompletados.length === 0
           ? <p className="empty-hint">Todavía no hay proyectos completados para mostrar.</p>
-          : <ul>{profile.proyectosCompletados.map((item) => <li key={item.nombre}>{item.nombre} · {item.fechaCompletado}</li>)}</ul>}
+          : <ul>{profile.proyectosCompletados.map((item) => <li key={item.nombre}>{item.nombre}{item.fechaCompletado ? ` · ${item.fechaCompletado}` : ''}</li>)}</ul>}
       </section>
       <section className="profile-section" aria-label="Logros">
         <h3>Logros</h3>
         {profile.logros.length === 0
-          ? <p className="empty-hint">Los logros se mostrarán cuando completes cursos o proyectos.</p>
+          ? <p className="empty-hint">Los logros se mostrarán cuando completes cursos o proyectos (avance 100%).</p>
           : <ul>{profile.logros.map((item) => <li key={item.titulo}>{item.titulo} · {item.origen}</li>)}</ul>}
       </section>
       <button type="button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}>Editar perfil</button>
