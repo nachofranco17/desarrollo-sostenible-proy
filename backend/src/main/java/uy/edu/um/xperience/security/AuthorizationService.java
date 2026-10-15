@@ -116,7 +116,7 @@ public class AuthorizationService implements EvaluadorPolitica {
                 case "GLOBAL" -> resource == Global.INSTANCE && s.equals(Sujeto.visitante());
                 case "PROPIO" -> a != null && s.usuarioId() != null && s.usuarioId().equals(a.ownerId());
                 case "PUBLICADO" -> a != null && a.published();
-                case "ORG" -> a != null && s.empresaId() != null; // RS20: fallo intencional
+                case "ORG" -> a != null && s.empresaId() != null && s.empresaId().equals(a.companyId());
                 case "POSTULANTE" -> postulante(s, action, resource);
                 case "INSCRIPTO" -> inscripto(s, resource);
                 default -> false;
