@@ -77,6 +77,26 @@ class CurriculumIntegrationTest {
     }
 
     @Test
+    void metadataIsPrivateCurrentAndRejectsOwnerOverrides() throws Exception {
+        var first = talent();
+        var second = talent();
+        assertThat(first.get(BASE + "/metadata").statusCode()).isEqualTo(404);
+        UUID firstId = uploaded(first, PDF);
+        UUID secondId = uploaded(second, PDF);
+        var metadata = first.get(BASE + "/metadata");
+        assertThat(metadata.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(metadata.body()).path("id").asText()).isEqualTo(firstId.toString());
+        assertThat(json.readTree(metadata.body()).size()).isEqualTo(5);
+        assertThat(metadata.body()).doesNotContain("usuarioId", "claveAlmacen", secondId.toString());
+        assertThat(metadata.headers().firstValue("Cache-Control").orElseThrow()).contains("no-store");
+        assertThat(first.get(BASE + "/metadata?usuarioId=" + second.id).statusCode()).isEqualTo(400);
+        assertThat(new Browser().get(BASE + "/metadata").statusCode()).isEqualTo(401);
+        assertThat(staff("ADMIN").get(BASE + "/metadata").statusCode()).isEqualTo(403);
+        UUID nextId = uploaded(first, PDF);
+        assertThat(json.readTree(first.get(BASE + "/metadata").body()).path("id").asText()).isEqualTo(nextId.toString());
+    }
+
+    @Test
     void replacementKeepsThePreviousVersionAndChangesOnlyOwnCurrentReference() throws Exception {
         var talent = talent();
         UUID previousId = uploaded(talent, PDF);

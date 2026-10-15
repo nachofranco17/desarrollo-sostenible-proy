@@ -6,7 +6,7 @@ Plataforma de formación y empleabilidad. El repositorio cubre:
 - **RF2** — perfil del Talento ([guía](docs/sprint1/rf2-perfil-talento.md))
 - **RF5** — gestión de cursos y proyectos por la empresa ([guía](docs/sprint1/rf5-gestion-cursos-proyectos.md))
 - **RF7** — invitaciones y asignación de roles del staff ([guía](docs/sprint1/rf7-invitaciones-staff.md))
-- **RF6, Sprint 2 — primera etapa backend:** ofertas, CV privado versionado, postulaciones y listado empresarial filtrable ([guía](docs/sprint2/rf6-ofertas-postulaciones.md)). El frontend de RF6 sigue pendiente.
+- **RF6, Sprint 2:** ofertas laborales con requisitos, CV privado versionado, postulaciones y listado empresarial con filtros y perfiles, desde la interfaz web ([guía y recorrido de prueba](docs/sprint2/rf6-ofertas-postulaciones.md)).
 
 El registro público crea **únicamente Talentos**. Las empresas y su primer Administrador se crean mediante un script de desarrollo. No hay formulario ni endpoint público de alta de empresas. El Administrador invita al resto del staff y asigna roles desde **Mi cuenta → Gestionar staff**. Conforme a `docs/seguridad`, el staff necesita una membresía activa y un rol asignado para iniciar sesión y operar. El Administrador debe reautenticarse antes de asignar roles.
 
@@ -91,6 +91,7 @@ El alta crea empresa, usuario STAFF, membresía ADMIN activa y un registro en `a
 - **RF2:** desde Mi cuenta → **Ver mi perfil** (`/perfil`). Detalle en [docs/sprint1/rf2-perfil-talento.md](docs/sprint1/rf2-perfil-talento.md).
 - **RF5:** con Administrador o Editor → **Gestionar cursos y proyectos** (`/gestion`). Detalle en [docs/sprint1/rf5-gestion-cursos-proyectos.md](docs/sprint1/rf5-gestion-cursos-proyectos.md).
 - **RF7:** con Administrador → **Gestionar staff** (`/staff`). En `dev`, abrir el enlace desde `backend/.data/invitaciones/`. Aceptar la invitación **no** asigna rol: hasta que el Admin asigne uno (reautenticándose), el invitado no puede iniciar sesión. Detalle en [docs/sprint1/rf7-invitaciones-staff.md](docs/sprint1/rf7-invitaciones-staff.md).
+- **RF6:** con Administrador/Reclutador → **Gestionar ofertas laborales**. Con Talento → **Mi currículum**, **Ver ofertas laborales** y **Mis postulaciones**. El listado de postulantes, sus perfiles y el CV adjunto están disponibles en cada oferta de la empresa. Recorrido completo en [la guía de RF6](docs/sprint2/rf6-ofertas-postulaciones.md#recorrido-manual-desde-la-interfaz).
 
 ### Pruebas automáticas
 
@@ -111,7 +112,7 @@ npm ci
 npm run test:e2e
 ```
 
-Las pruebas E2E usan Google Chrome instalado. Playwright inicia Vite (`npm run dev`) si hace falta. En Windows el fixture de alta usa PowerShell; en macOS/Linux usa el script bash equivalente. Cubren registro/acceso/logout, invitaciones de staff y el alta real de Administrador. Crean cuentas de prueba únicas en la base local; no eliminan datos existentes.
+Las pruebas E2E usan Google Chrome instalado en Windows. En macOS/Linux, instalar previamente el navegador de Playwright con `npx playwright install chromium`; también se puede seleccionar Chrome con `E2E_BROWSER_CHANNEL=chrome`. Playwright inicia Vite (`npm run dev`) si hace falta. En Windows el fixture de alta usa PowerShell; en macOS/Linux usa el script bash equivalente. Cubren registro/acceso/logout, invitaciones de staff, alta real de Administrador y el recorrido RF6 con dos empresas y dos Talentos. Crean cuentas de prueba únicas en la base local; no eliminan datos existentes. Si una prueba falla, se guarda captura y traza en `frontend/test-results/`.
 
 ## Implementación y alcance
 
@@ -124,7 +125,7 @@ Las pruebas E2E usan Google Chrome instalado. Playwright inicia Vite (`npm run d
 - Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. RS18 emite un evento JSON estructurado con metadatos seguros ([docs/seguridad/rs18-registro-accesos-denegados.md](docs/seguridad/rs18-registro-accesos-denegados.md)); RS19 (protección del almacén) sigue pendiente.
 - Archivos de curso y CV: disco privado (`STORAGE_DIR`), descargados a través del backend. Los CV son PDF de hasta 5 MiB; cada postulación conserva su versión original.
 
-El catálogo completo de permisos está cargado. Hay módulos de perfiles, catálogo, gestión de cursos y proyectos, inscripciones y avance de RF4, invitaciones del staff y backend RF6. ADMIN/RECLUTADOR crean ofertas y las publican; el Talento se postula con su CV actual, y la empresa consulta perfiles seguros y el CV adjunto de sus postulantes. `POSTULANTE` exige una relación persistida real. Siguen pendientes frontend RF6, cierre/reapertura/eliminación de ofertas, cambios de estado de postulaciones, completado de lecciones, respuestas verificadas a entregables y logros, y recuperación/verificación de correo. `INSCRIPTO` exige una inscripción persistida y permite descargar material incluso después de dar de baja el curso/proyecto. No se aceptan relaciones de propiedad enviadas por el cliente.
+El catálogo completo de permisos está cargado. Hay módulos de perfiles, catálogo, gestión de cursos y proyectos, inscripciones y avance de RF4, invitaciones del staff y RF6 con interfaz web. ADMIN/RECLUTADOR crean ofertas y las publican; el Talento se postula con su CV actual, y la empresa consulta perfiles seguros y el CV adjunto de sus postulantes. `POSTULANTE` exige una relación persistida real. Siguen pendientes cierre/reapertura/eliminación de ofertas, cambios de estado de postulaciones, completado de lecciones, respuestas verificadas a entregables y logros, y recuperación/verificación de correo. `INSCRIPTO` exige una inscripción persistida y permite descargar material incluso después de dar de baja el curso/proyecto. No se aceptan relaciones de propiedad enviadas por el cliente.
 
 Ver también:
 

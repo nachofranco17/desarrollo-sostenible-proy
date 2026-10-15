@@ -34,6 +34,13 @@ public class CurriculumController {
     }
 
     @RequiereAccion("curriculum.descargar")
+    @GetMapping("/metadata")
+    public ResponseEntity<CurriculumView> metadata(HttpServletRequest request) {
+        CurriculumInput.requireNoParameters(request);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(curriculums.metadataOwn());
+    }
+
+    @RequiereAccion("curriculum.descargar")
     @GetMapping
     public ResponseEntity<Resource> download(HttpServletRequest request) {
         CurriculumInput.requireNoParameters(request);

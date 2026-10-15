@@ -47,6 +47,15 @@ public class CurriculumService {
 
     public record Download(Curriculum curriculum, Resource file) {}
 
+    @Transactional(readOnly = true)
+    public CurriculumView metadataOwn() {
+        Sujeto subject = ownTalent("curriculum.descargar");
+        Curriculum current = curriculums.current(subject.usuarioId()).orElseThrow(() ->
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "No tenés un currículum actual."));
+        if (!policy.autorizar(subject, "curriculum.descargar", current)) throw denied();
+        return CurriculumView.from(current);
+    }
+
     @Transactional
     public CurriculumView uploadOwn(MultipartFile file) {
         Sujeto subject = ownTalent("curriculum.subir");
