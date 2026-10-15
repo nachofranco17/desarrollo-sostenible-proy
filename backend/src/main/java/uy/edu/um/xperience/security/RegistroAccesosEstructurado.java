@@ -83,7 +83,8 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
     static String resourceType(String action, String resource) {
         String a = action == null ? "" : action;
         String path = resource == null ? "" : resource;
-        if (a.startsWith("material.") || path.contains("/materials/")) {
+        if (a.startsWith("material.") || a.startsWith("curriculum.")
+                || path.contains("/materials/") || path.endsWith("/curriculum")) {
             return "file";
         }
         if (a.startsWith("perfil.") || path.contains("/profile")) {
@@ -102,11 +103,11 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
                 || path.contains("/auth/reauthenticate")) {
             return "session";
         }
-        if (a.startsWith("oferta.")) {
-            return "offer";
-        }
-        if (a.startsWith("postulacion.")) {
+        if (a.startsWith("postulacion.") || path.contains("/applications")) {
             return "application";
+        }
+        if (a.startsWith("oferta.") || path.contains("/offers")) {
+            return "offer";
         }
         if (a.startsWith("inscripcion.") || a.startsWith("leccion.") || a.startsWith("entregable.")) {
             return "enrollment";
@@ -126,9 +127,13 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
         if (a.contains("registrar") || a.contains("invitar")) {
             return "create";
         }
+        if ("oferta.gestionar".equals(a) && path.endsWith("/publish") && method(request, "POST")) {
+            return "publish";
+        }
         String method = request == null ? "" : String.valueOf(request.getMethod());
         return switch (method) {
-            case "GET" -> path != null && path.endsWith("/company/courses") ? "list" : "read";
+            case "GET" -> path.endsWith("/company/courses") || path.endsWith("/offers")
+                    || path.endsWith("/applications") || path.endsWith("/applications/me") ? "list" : "read";
             case "POST" -> "create";
             case "PUT", "PATCH" -> "update";
             case "DELETE" -> "delete";

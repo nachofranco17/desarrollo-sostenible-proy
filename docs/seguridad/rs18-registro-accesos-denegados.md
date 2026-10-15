@@ -1,7 +1,7 @@
 # RS18 — Registro de los intentos de acceso denegados
 
 Requerimiento de seguridad: **RS18** (ASVS v5.0.0, documentado como R18 en el modelo)
-Versión: 1.0
+Versión: 1.1 (06/10/2026)
 
 Todo intento de acceso denegado por autorización queda registrado en un evento estructurado (JSON), con metadatos suficientes para reconstruir el hecho y sin datos sensibles.
 
@@ -48,9 +48,9 @@ Una línea de log cuyo mensaje es un objeto JSON parseable. Ejemplo:
 | `timestamp` | ISO-8601 (`Instant`) |
 | `userId` | UUID del usuario autenticado, o `null` si es visitante/anónimo |
 | `origin` | IP remota resuelta por el contenedor (`HttpServletRequest.getRemoteAddr`) |
-| `resourceType` | Metadato estable: `profile`, `course`, `file`, `account`, `membership`, `session`, etc. |
+| `resourceType` | Metadato estable: `profile`, `course`, `offer`, `application`, `file`, `account`, `membership`, `session`, etc. |
 | `resourceId` | UUID técnico del recurso cuando figura en la ruta |
-| `operation` | Verbo estable: `read`, `update`, `create`, `delete`, `download`, `list` |
+| `operation` | Verbo estable: `read`, `update`, `create`, `delete`, `download`, `list`, `publish` |
 | `action` | Acción de política ya usada por el PEP (`perfil.gestionar`, `material.descargar`, …) |
 | `result` | Siempre `denied` |
 | `reason` | Categoría genérica de denegación |
@@ -76,9 +76,9 @@ El evento se construye con una allowlist explícita; no se serializa el request 
 |---|---|
 | `ROLE_PERMISSION_DENIED` | El PEP o el filtro de sesión deniegan por rol/acción (RS9) |
 | `INSTANCE_ACCESS_DENIED` | Acceso horizontal a instancia (p. ej. perfil ajeno por id) (RS11) |
-| `ORGANIZATION_ACCESS_DENIED` | Recurso de otra empresa (cursos/staff) (RS15) |
+| `ORGANIZATION_ACCESS_DENIED` | Recurso de otra empresa (cursos/staff/ofertas y postulantes anidados) (RS15) |
 | `FIELD_ACCESS_DENIED` | Campo no autorizado en el cuerpo (RS12) |
-| `FILE_ACCESS_DENIED` | Descarga/operación de material sin autorización (RS14) |
+| `FILE_ACCESS_DENIED` | Descarga/operación de material o currículum sin autorización (RS14) |
 
 ## Tratamiento de IP / origen
 
@@ -100,6 +100,8 @@ Se usa `request.getRemoteAddr()`, la IP que ya resuelve el contenedor servlet. N
 
 6. **Fallo del logger:** `Rs18LoggerFailureTest` — si `RegistroAccesos.denegado` lanza, la solicitud sigue denegada (403); nunca fail-open.
 
+7. **RF6:** denegaciones de oferta, listado empresarial, perfil contextual y CV adjunto comprueban categorías de empresa/archivo, operaciones `list`/`publish`/`download` y ausencia de información de perfil o almacenamiento.
+
 Todas comprueban usuario, timestamp ISO-8601, origen, recurso, operación, formato JSON y un solo evento por intento.
 
 ```powershell
@@ -117,4 +119,4 @@ cd backend
 
 RS18 solo **emite** el evento. La protección del almacén de logs (RS19), retención, SIEM o dashboards quedan fuera de alcance.
 
-Inscripción, postulación y oferta aún no tienen API de negocio; si en el futuro generan denegaciones por el mismo `Denegaciones`/`RegistroAccesos`, quedarán registradas sin cambios adicionales en RS18.
+RF6 usa el mismo mecanismo para ofertas, postulaciones, perfil contextual y CV. Las rutas empresariales se clasifican como organización y las operaciones de CV como archivo, salvo que ya se haya marcado una denegación por rol o campo. Las búsquedas/filtros no se incluyen en el evento. Inscripción sigue pendiente de API de negocio.

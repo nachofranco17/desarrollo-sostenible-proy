@@ -171,6 +171,53 @@ class Rs18DeniedAccessLogTest {
         assertNoSensitiveData(event, editorA.email, editorB.email);
     }
 
+    @Test
+    void rf6CrossCompanyListProfileCurriculumAndPublishDenialsHaveSafeMetadata() throws Exception {
+        UUID companyA = company();
+        var adminA = member(companyA, "ADMIN");
+        var recruiterB = member(company(), "RECLUTADOR");
+        var talent = registerTalent();
+        assertThat(talent.upload("/profile/me/curriculum", "privado.pdf", PDF).statusCode()).isEqualTo(201);
+        var created = adminA.send("POST", "/company/offers", json.writeValueAsString(Map.of(
+            "titulo", "Oferta privada de empresa", "descripcion", "Descripción", "cursosRequeridos", List.of())));
+        assertThat(created.statusCode()).isEqualTo(201);
+        String offerId = json.readTree(created.body()).path("id").asText();
+        assertThat(adminA.send("POST", "/company/offers/" + offerId + "/publish", "{}").statusCode())
+            .isIn(200, 204);
+        var applied = talent.send("POST", "/offers/" + offerId + "/applications", "{}");
+        assertThat(applied.statusCode()).isEqualTo(201);
+        String applicationId = json.readTree(applied.body()).path("id").asText();
+        String applications = "/company/offers/" + offerId + "/applications";
+
+        clearEvents();
+        assertThat(recruiterB.get(applications + "?q=busqueda-secreta").statusCode()).isEqualTo(403);
+        JsonNode event = singleEvent();
+        assertDenialBasics(event, recruiterB.id.toString(), "application", "list", Denegaciones.ORGANIZATION_ACCESS_DENIED);
+        assertThat(event.path("resourceId").asText()).isEqualTo(offerId);
+        assertNoSensitiveData(event, adminA.email, recruiterB.email, talent.email, "busqueda-secreta");
+
+        clearEvents();
+        assertThat(recruiterB.get(applications + "/" + applicationId + "/profile").statusCode()).isEqualTo(403);
+        event = singleEvent();
+        assertDenialBasics(event, recruiterB.id.toString(), "profile", "read", Denegaciones.ORGANIZATION_ACCESS_DENIED);
+        assertThat(event.path("resourceId").asText()).isEqualTo(applicationId);
+        assertNoSensitiveData(event, adminA.email, talent.email, PASSWORD);
+
+        clearEvents();
+        assertThat(recruiterB.getBytes(applications + "/" + applicationId + "/curriculum").statusCode()).isEqualTo(403);
+        event = singleEvent();
+        assertDenialBasics(event, recruiterB.id.toString(), "file", "download", Denegaciones.FILE_ACCESS_DENIED);
+        assertThat(event.path("resourceId").asText()).isEqualTo(applicationId);
+        assertNoSensitiveData(event, "privado.pdf", "%PDF", "claveAlmacen", "./.data", talent.email);
+
+        clearEvents();
+        assertThat(recruiterB.send("POST", "/company/offers/" + offerId + "/publish", "{}").statusCode()).isEqualTo(403);
+        event = singleEvent();
+        assertDenialBasics(event, recruiterB.id.toString(), "offer", "publish", Denegaciones.ORGANIZATION_ACCESS_DENIED);
+        assertThat(event.path("resourceId").asText()).isEqualTo(offerId);
+        assertNoSensitiveData(event, adminA.email, recruiterB.email, talent.email, PASSWORD);
+    }
+
     // ---- assertions ----
 
     private void assertDenialBasics(JsonNode event, String userId, String resourceType, String operation, String reason) {

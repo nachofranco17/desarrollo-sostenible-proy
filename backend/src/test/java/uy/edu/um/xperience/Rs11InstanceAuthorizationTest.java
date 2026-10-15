@@ -143,8 +143,8 @@ class Rs11InstanceAuthorizationTest {
     }
 
     @Test
-    void resourcesWithoutImplementedApisRemainDeniedAtPolicyLevel() {
-        // Documenta el alcance pendiente: no hay tablas/rutas de inscripción ni postulación.
+    void foreignOwnershipAndUnimplementedEnrollmentRemainDeniedAtPolicyLevel() {
+        // RF4 sigue pendiente; RF6 verifica además las rutas reales en ApplicationIntegrationTest.
         String email = registerAndStore();
         Sujeto talent = Sujeto.from(accounts.byEmail(email).orElseThrow());
         UUID foreign = UUID.randomUUID();
