@@ -99,4 +99,17 @@ Publicar ese commit únicamente en la rama del experimento. El mismo workflow de
 
 - Antes de corregir INSCRIPTO: 202 pruebas, 4 fallos de aserción, 0 errores, 0 omitidas. Detectó los tres permisos de inscripción y la conservación del acceso tras la baja.
 - Después de corregir la inscripción persistida y la descarga: 220 pruebas de matriz y cursos, 0 fallos, 0 errores, 0 omitidas.
-- La ejecución completa y las URLs de los pipelines correcto, defectuoso y restaurado deben registrarse una vez ejecutados. Crear el workflow no acredita haberlo ejecutado en GitHub.
+- Regresión completa de la versión correcta, ejecutada en Windows con JDK 21: **432 pruebas, 0 fallos, 0 errores, 0 omitidas; BUILD SUCCESS**.
+- Experimento local sobre `AuthorizationMatrixTest`: **202 pruebas, 20 fallos de aserción, 0 errores, 0 omitidas**. Los casos fuera del alcance ORG detectaron que se admitía un recurso de otra empresa.
+
+## Evidencia de GitHub Actions — 15/10/2026
+
+| Estado verificado | Commit | Resultado | Ejecución |
+|---|---|---|---|
+| Código correcto en `revision-rf6-rs20` | `b3b1cd4` | Backend y frontend aprobados | [Pipeline correcto](https://github.com/nachofranco17/desarrollo-sostenible-proy/actions/runs/38818022271) |
+| Fallo intencional, únicamente en `experimento/rs20-aislamiento` | `3813e8b` | Backend rechazado: **432 pruebas, 24 fallos, 0 errores, 0 omitidas; BUILD FAILURE; salida 1**. Frontend aprobado. | [Pipeline que detectó el fallo](https://github.com/nachofranco17/desarrollo-sostenible-proy/actions/runs/38818813717) |
+| Reversión del fallo en la rama del experimento | `5bff3ef` | Backend y frontend nuevamente aprobados | [Pipeline restaurado](https://github.com/nachofranco17/desarrollo-sostenible-proy/actions/runs/38819572962) |
+
+De los 24 fallos en CI, 20 pertenecen a los negativos de instancia de `AuthorizationMatrixTest`; los otros cuatro son casos de `AuthIntegrationTest`, `PolicyContractTest` y `StaffInvitationIntegrationTest`. Todos son fallos de aserción por acceso admitido cuando debía denegarse, sin errores de inicialización o compilación.
+
+La secuencia código correcto → defecto de autorización detectado → reversión aprobada acredita RS20.3. El commit defectuoso no se integró en `revision-rf6-rs20`; se conserva en el historial de la rama del experimento junto con su reversión. Las URLs anteriores conservan la referencia de las ejecuciones aunque los artefactos de pruebas caduquen según su retención.
