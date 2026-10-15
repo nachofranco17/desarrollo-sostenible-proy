@@ -93,6 +93,16 @@ public class AuthorizationService implements EvaluadorPolitica {
             application.talentoId(), application.curriculumId());
         return count != null && count == 1;
     }
+    /** El curso contenedor se resuelve en el servidor; una bandera del cliente nunca prueba inscripción. */
+    private boolean inscripto(Sujeto s, Object resource) {
+        if (s.usuarioId() == null || !(resource instanceof Course course)) return false;
+        Integer count = jdbc.queryForObject("""
+            SELECT COUNT(*) FROM inscripcion i JOIN curso c ON c.id = i.curso_id
+            WHERE i.talento_id = ? AND c.id = ? AND c.empresa_id = ?
+              AND c.estado IN ('PUBLICADO', 'BAJADO')
+            """, Integer.class, s.usuarioId(), course.id(), course.empresaId());
+        return count != null && count == 1;
+    }
     @Override public boolean autorizar(Sujeto s, String action, Object resource) {
         try {
             var grants = permisos(s, action);
@@ -108,8 +118,7 @@ public class AuthorizationService implements EvaluadorPolitica {
                 case "PUBLICADO" -> a != null && a.published();
                 case "ORG" -> a != null && s.empresaId() != null && s.empresaId().equals(a.companyId());
                 case "POSTULANTE" -> postulante(s, action, resource);
-                // RF4 is not implemented; an enrollment flag never grants access.
-                case "INSCRIPTO" -> false;
+                case "INSCRIPTO" -> inscripto(s, resource);
                 default -> false;
             });
         } catch (RuntimeException error) { falla("autorizar", action, error); return false; }

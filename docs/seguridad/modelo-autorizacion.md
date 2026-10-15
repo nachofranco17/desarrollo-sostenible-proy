@@ -220,7 +220,7 @@ Todos los identificadores son UUID (R13). Las entidades vinculadas a una empresa
 | Oferta | borrador, publicada, cerrada |
 | Postulación | enviada, preseleccionada, seleccionada, descartada |
 
-La primera etapa de RF6 solo persiste ofertas `BORRADOR`/`PUBLICADA` y postulaciones `ENVIADA`. No ofrece cierre, eliminación, reapertura ni transiciones de postulación. Los estados restantes y `postulacion.cambiar_estado` permanecen como diseño para etapas posteriores, sin endpoint nuevo. `INSCRIPTO` sigue denegado mientras no exista RF4.
+La primera etapa de RF6 solo persiste ofertas `BORRADOR`/`PUBLICADA` y postulaciones `ENVIADA`. No ofrece cierre, eliminación, reapertura ni transiciones de postulación. Los estados restantes y `postulacion.cambiar_estado` permanecen como diseño para etapas posteriores, sin endpoint nuevo. `INSCRIPTO` comprueba la inscripción persistida al curso/proyecto contenedor, resuelto por el servidor. Conserva el acceso si el contenido está `BAJADO`; rechaza banderas, recursos inexistentes y cursos sin inscripción. La descarga de material usa una consulta acotada por empresa o inscripción, seguida de autorización de instancia. Los permisos `leccion.completar` y `entregable.responder` se verifican en el evaluador; sus endpoints de negocio todavía no están implementados.
 
 ## 8. Stack
 

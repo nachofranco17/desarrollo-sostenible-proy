@@ -142,7 +142,7 @@ docs/seguridad/rs18-registro-accesos-denegados.md
 
 La cobertura comprueba gestión ADMIN/RECLUTADOR, denegación EDITOR/TALENTO, requisitos publicados, borradores ocultos, PDF seguro, postulación con CV original, duplicados, campos manipulados, filtros combinados, aislamiento empresarial, acceso propio, ausencia de campos sensibles, autenticación/CSRF, eventos RS18 y restricciones de base de datos. `PolicyContractTest` valida relaciones persistidas e impide contextos manipulados.
 
-El frontend, cierre/reapertura/eliminación, transiciones de postulación, RF4 (inscripciones, progreso, proyectos completados y logros) y RS19 (protección del almacén de logs) quedan pendientes. No se incluyen datos de formación inexistentes ni endpoints fuera del alcance cerrado.
+El frontend, cierre/reapertura/eliminación, transiciones de postulación, completado de lecciones, respuestas a entregables y logros de RF4 y RS19 (protección del almacén de logs) quedan pendientes. No se incluyen datos de formación inexistentes ni endpoints fuera del alcance cerrado.
 
 Ejecutar las pruebas específicas de RF6 y luego, desde `backend`:
 

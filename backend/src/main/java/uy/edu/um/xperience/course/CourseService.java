@@ -254,10 +254,12 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public Download download(UUID id, UUID materialId) {
-        Sujeto subject = staffSubject();
-        owned(subject, "material.descargar", id, false);
+        Sujeto subject = subjects.current();
+        var course = courses.findForDownload(id, subject.empresaId(), subject.usuarioId())
+            .orElseThrow(CourseService::denied);
+        if (!policy.autorizar(subject, "material.descargar", course)) throw denied();
         // Nested material lookup scoped to this course + company (RS11).
-        var material = courses.material(materialId, id, subject.empresaId()).orElseThrow(CourseService::denied);
+        var material = courses.material(materialId, id, course.empresaId()).orElseThrow(CourseService::denied);
         return new Download(material, storage.open(material.claveAlmacen()));
     }
 

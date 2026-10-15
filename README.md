@@ -124,7 +124,7 @@ Las pruebas E2E usan Google Chrome instalado. Playwright inicia Vite (`npm run d
 - Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. RS18 emite un evento JSON estructurado con metadatos seguros ([docs/seguridad/rs18-registro-accesos-denegados.md](docs/seguridad/rs18-registro-accesos-denegados.md)); RS19 (protección del almacén) sigue pendiente.
 - Archivos de curso y CV: disco privado (`STORAGE_DIR`), descargados a través del backend. Los CV son PDF de hasta 5 MiB; cada postulación conserva su versión original.
 
-El catálogo completo de permisos está cargado. Hay módulos de perfiles, catálogo, gestión de cursos y proyectos, invitaciones del staff y backend RF6. ADMIN/RECLUTADOR crean ofertas y las publican; el Talento se postula con su CV actual, y la empresa consulta perfiles seguros y el CV adjunto de sus postulantes. `POSTULANTE` exige una relación persistida real. Siguen pendientes frontend RF6, cierre/reapertura/eliminación de ofertas, cambios de estado de postulaciones, inscripciones y descarga de material para Talentos inscriptos (RF4), y recuperación/verificación de correo. `INSCRIPTO` sigue denegado. No se aceptan relaciones de propiedad enviadas por el cliente.
+El catálogo completo de permisos está cargado. Hay módulos de perfiles, catálogo, gestión de cursos y proyectos, inscripciones y avance de RF4, invitaciones del staff y backend RF6. ADMIN/RECLUTADOR crean ofertas y las publican; el Talento se postula con su CV actual, y la empresa consulta perfiles seguros y el CV adjunto de sus postulantes. `POSTULANTE` exige una relación persistida real. Siguen pendientes frontend RF6, cierre/reapertura/eliminación de ofertas, cambios de estado de postulaciones, completado de lecciones, respuestas verificadas a entregables y logros, y recuperación/verificación de correo. `INSCRIPTO` exige una inscripción persistida y permite descargar material incluso después de dar de baja el curso/proyecto. No se aceptan relaciones de propiedad enviadas por el cliente.
 
 Ver también:
 
@@ -133,3 +133,4 @@ Ver también:
 - [Modelo de autorización](docs/seguridad/modelo-autorizacion.md)
 - [RS11 — autorización por instancia](docs/seguridad/rs11-autorizacion-por-instancia.md)
 - [RS18 — registro de accesos denegados](docs/seguridad/rs18-registro-accesos-denegados.md)
+- [RS20 — matriz de pruebas y fallo intencional](docs/seguridad/rs20-pruebas-autorizacion.md)

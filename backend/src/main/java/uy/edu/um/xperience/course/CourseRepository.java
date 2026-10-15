@@ -60,6 +60,15 @@ public class CourseRepository {
             .stream().findFirst();
     }
 
+    /** Acota la lectura antes de cargar datos, tanto por empresa como por inscripción persistida. */
+    public Optional<Course> findForDownload(UUID id, UUID empresaId, UUID talentoId) {
+        return jdbc.query("""
+            SELECT c.* FROM curso c WHERE c.id = ? AND (c.empresa_id = ? OR EXISTS (
+                SELECT 1 FROM inscripcion i WHERE i.curso_id = c.id AND i.talento_id = ?
+                  AND c.estado IN ('PUBLICADO', 'BAJADO')))
+            """, COURSE, id, empresaId, talentoId).stream().findFirst();
+    }
+
     /** Bloquea la fila para que dos cambios concurrentes sobre el mismo curso no se pisen. */
     public Optional<Course> findForUpdate(UUID id, UUID empresaId) {
         return jdbc.query("SELECT * FROM curso WHERE id = ? AND empresa_id = ? FOR UPDATE", COURSE, id, empresaId)

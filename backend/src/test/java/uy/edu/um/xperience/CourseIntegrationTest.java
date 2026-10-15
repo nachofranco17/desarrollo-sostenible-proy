@@ -316,6 +316,32 @@ class CourseIntegrationTest {
         assertThat(editor.get(BASE).statusCode()).isEqualTo(403);
     }
 
+    @Test
+    void enrolledTalentDownloadsMaterialIncludingAfterWithdrawalButCannotSwitchCourseOrUser() throws Exception {
+        var editor = member(company(), "EDITOR");
+        UUID courseId = create(editor, "CURSO", "Curso con material");
+        addLesson(editor, courseId);
+        byte[] pdf = "%PDF-1.4\nMaterial privado\n%%EOF".getBytes(StandardCharsets.US_ASCII);
+        var uploaded = editor.upload(BASE + "/" + courseId + "/materials", "material.pdf", pdf);
+        assertThat(uploaded.statusCode()).isEqualTo(200);
+        String materialId = json.readTree(uploaded.body()).path("materiales").get(0).path("id").asText();
+        String download = BASE + "/" + courseId + "/materials/" + materialId;
+        assertThat(editor.send("POST", BASE + "/" + courseId + "/publish", "{}").statusCode()).isEqualTo(200);
+        var enrolled = talent(); var stranger = talent();
+        assertThat(enrolled.get(download).statusCode()).isEqualTo(403);
+        jdbc.update("INSERT INTO inscripcion(id, talento_id, curso_id) VALUES (?, ?, ?)", UUID.randomUUID(), enrolled.id, courseId);
+        assertThat(enrolled.getBytes(download).statusCode()).isEqualTo(200);
+        assertThat(enrolled.getBytes(download).body()).isEqualTo(pdf);
+        assertThat(stranger.get(download).statusCode()).isEqualTo(403);
+        UUID otherCourse = create(editor, "CURSO", "Otro curso");
+        assertThat(enrolled.get(BASE + "/" + otherCourse + "/materials/" + materialId).statusCode()).isEqualTo(403);
+        assertThat(enrolled.get(BASE + "/" + courseId + "/materials/" + UUID.randomUUID()).statusCode()).isEqualTo(403);
+        jdbc.update("UPDATE curso SET estado = 'BAJADO' WHERE id = ?", courseId);
+        assertThat(enrolled.getBytes(download).body()).isEqualTo(pdf);
+        jdbc.update("DELETE FROM inscripcion WHERE talento_id = ? AND curso_id = ?", enrolled.id, courseId);
+        assertThat(enrolled.get(download).statusCode()).isEqualTo(403);
+    }
+
     // ---- Apoyo ----
 
     private UUID company() {
