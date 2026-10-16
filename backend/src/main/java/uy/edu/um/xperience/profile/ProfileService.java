@@ -20,8 +20,8 @@ import uy.edu.um.xperience.security.Sujetos;
 
 /**
  * Perfil del Talento (RF2). El PEP ya comprobó perfil.gestionar a nivel de función; acá se
- * resuelve la instancia (RS11): solo el perfil del sujeto de la sesión, revalidado con el
- * evaluador. No hay búsqueda por id ajeno ni ownership tomado del body.
+ * resuelve la instancia (RS11 / RS13): solo el perfil del sujeto de la sesión, revalidado con el
+ * evaluador. No hay búsqueda por id ajeno ni ownership tomado del body; se usa /profile/me.
  * El progreso se deriva de las inscripciones del Talento (RF4).
  */
 @Service

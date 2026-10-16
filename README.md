@@ -102,7 +102,7 @@ cd backend
 
 En Windows: `.\mvnw.cmd test`.
 
-Las pruebas de integración levantan un servidor HTTP real y una base H2 en memoria. Cubren auth, perfil (RF2), cursos (RF5), invitaciones/staff (RF7), autorización por instancia (RS11) y registro estructurado de denegaciones (RS18). También hay pruebas MockMvc del PEP, contratos de política, fallo del logger sin fail-open, y una comparación de los 54 permisos persistidos con la tabla de `docs/seguridad/modelo-autorizacion.md`.
+Las pruebas de integración levantan un servidor HTTP real y una base H2 en memoria. Cubren auth, perfil (RF2), cursos (RF5), invitaciones/staff (RF7), autorización por instancia (RS11), identificadores que no son llave de acceso (RS13) y registro estructurado de denegaciones (RS18). También hay pruebas MockMvc del PEP, contratos de política, fallo del logger sin fail-open, y una comparación de los 54 permisos persistidos con la tabla de `docs/seguridad/modelo-autorizacion.md`.
 
 Con el backend **dev** ejecutándose y el JAR actualizado, desde otra terminal:
 
@@ -133,5 +133,6 @@ Ver también:
 - [Permisos mínimos y sus pruebas](docs/permisos-minimos.md)
 - [Modelo de autorización](docs/seguridad/modelo-autorizacion.md)
 - [RS11 — autorización por instancia](docs/seguridad/rs11-autorizacion-por-instancia.md)
+- [RS13 — identificadores que no son llave de acceso](docs/seguridad/rs13-identificadores-no-llave-acceso.md)
 - [RS18 — registro de accesos denegados](docs/seguridad/rs18-registro-accesos-denegados.md)
 - [RS20 — matriz de pruebas y fallo intencional](docs/seguridad/rs20-pruebas-autorizacion.md)

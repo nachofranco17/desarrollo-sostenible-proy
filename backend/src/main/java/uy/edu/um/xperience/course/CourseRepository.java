@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 /**
  * Toda consulta lleva la empresa, tomada de la sesión (R15): un curso de otra empresa y uno
  * inexistente dan el mismo resultado. Lecciones, entregables y materiales se buscan también por
- * curso, así que conocer su id no alcanza para llegar a ellos (R11, R13).
+ * curso, así que conocer su id no alcanza para llegar a ellos (RS11, RS13).
  */
 @Repository
 public class CourseRepository {
