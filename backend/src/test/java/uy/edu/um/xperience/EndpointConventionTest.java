@@ -15,8 +15,9 @@ import static org.assertj.core.api.Assertions.*;
 /** R8: every endpoint declares an action from the documented catalog, so a new feature stays denied until it is added there. */
 @SpringBootTest
 class EndpointConventionTest {
-    // Has no rows in the permission table on purpose: the PEP validates its invitation token instead (see the document).
-    private static final Set<String> SPECIAL_ACTIONS = Set.of("invitacion.aceptar");
+    // Documented special cases with no rows in the permission table on purpose (see the document): the PEP validates
+    // the invitation token instead, and the demo route shows deny by default for an action nobody was granted.
+    private static final Set<String> SPECIAL_ACTIONS = Set.of("invitacion.aceptar", "demo.permiso_asignable");
 
     @Autowired @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping mapping;
 

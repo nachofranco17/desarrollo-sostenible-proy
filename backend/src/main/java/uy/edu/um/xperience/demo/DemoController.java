@@ -8,7 +8,7 @@ import uy.edu.um.xperience.security.RequiereAccion;
 
 /**
  * Probe for "Deny by default: ruta con permiso no asignado".
- * The action is in the documented catalog, but V4 loads no rows for it.
+ * The action is documented as a special case of the catalog (modelo-autorizacion.md), and no migration loads rows for it.
  * Distinct from a route missing {@code @RequiereAccion} (ruta nueva sin permiso).
  */
 @RestController

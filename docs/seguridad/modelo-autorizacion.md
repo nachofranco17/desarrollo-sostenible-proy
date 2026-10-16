@@ -65,6 +65,8 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 
 **Caso especial: `invitacion.aceptar`.** No tiene filas en la tabla porque el sujeto no tiene sesión ni rol. El PEP la trata como una acción propia cuya única condición es que el token de invitación sea válido y no haya expirado.
 
+**Caso especial: `demo.permiso_asignable`.** Es la acción de la ruta de demostración `GET /api/demo/permiso-asignable`, que sirve para mostrar la denegación por defecto con una acción declarada pero sin permisos asignados. No forma parte de la matriz de R1 y ninguna migración le carga filas, así que se deniega a todos los roles. `scripts/demo-permiso-asignable.sql` agrega una fila de forma manual, solo en una base local, para mostrar que habilitarla es editar datos y no código.
+
 ### Funcionalidades nuevas (R8)
 
 Toda funcionalidad nueva queda inaccesible hasta que se definan sus permisos de forma explícita. Para habilitarla:
