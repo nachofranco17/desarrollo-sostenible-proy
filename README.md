@@ -44,7 +44,7 @@ npm run dev
 
 Abrir **http://127.0.0.1:5173**. El backend escucha en el puerto **8081**. Vite reenvía `/api` al backend para que las cookies y CSRF funcionen en el mismo origen. Si necesitás otro puerto, configurá `PORT` en el backend y `BACKEND_URL` en la terminal del frontend.
 
-La base es **H2** persistente en `backend/.data/` (archivo `xperience`). Las cuentas sobreviven al reinicio. Flyway aplica las migraciones al iniciar. El perfil `dev` escribe las invitaciones RF7 en disco (sin SMTP). También:
+La base es **H2** persistente en `backend/.data/` (archivo `xperience`). Las cuentas sobreviven al reinicio. Flyway aplica las migraciones al iniciar con el dueño del esquema (`sa`), y la aplicación atiende las solicitudes con `xperience_app`, que solo puede manipular datos y se crea solo ([detalle](docs/seguridad/minimo-privilegio-base-datos.md)). Fuera de `dev` hay que definir `DB_PASSWORD`. El perfil `dev` escribe las invitaciones RF7 en disco (sin SMTP). También:
 
 - invitaciones RF7 → `backend/.data/invitaciones/`
 - materiales de cursos RF5 → `backend/.data/archivos` (configurable con `STORAGE_DIR`)
@@ -124,6 +124,7 @@ Las pruebas E2E usan Google Chrome instalado en Windows. En macOS/Linux, instala
 - Autorización: `@RequiereAccion` por endpoint de negocio, PEP central y evaluador de permisos vigente por solicitud. Login y logout atraviesan el mismo evaluador desde un filtro. Las lecturas usan Specifications o consultas JDBC acotadas por dueño/empresa/publicación y evaluación de instancia; se deniega por defecto.
 - Cambio de roles: reautenticación del Administrador mediante `POST /api/auth/reauthenticate`, válida por cinco minutos y vinculada a su sesión. Se rechazan cambios sobre la propia membresía y sobre otras empresas.
 - Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. RS18 emite un evento JSON estructurado con metadatos seguros ([docs/seguridad/rs18-registro-accesos-denegados.md](docs/seguridad/rs18-registro-accesos-denegados.md)). RS19 lo codifica y lo agrega a un almacén separado donde la aplicación solo puede insertar ([docs/seguridad/rs19-proteccion-registros.md](docs/seguridad/rs19-proteccion-registros.md)).
+- Base de datos: mínimo privilegio. Flyway migra como dueño del esquema; la aplicación usa un usuario sin DDL ni administración, con `permiso` en solo lectura y `alta_empresa` en solo agregado ([docs/seguridad/minimo-privilegio-base-datos.md](docs/seguridad/minimo-privilegio-base-datos.md)).
 - Archivos de curso y CV: disco privado (`STORAGE_DIR`), descargados a través del backend con la misma autorización que su recurso, como adjunto y con tipo y extensión detectados por el servidor (RS14). Los CV son PDF de hasta 5 MiB; cada postulación conserva su versión original.
 
 El catálogo completo de permisos está cargado. Hay módulos de perfiles, catálogo, gestión de cursos y proyectos, inscripciones y avance de RF4, invitaciones del staff y RF6 con interfaz web. ADMIN/RECLUTADOR crean ofertas y las publican; el Talento se postula con su CV actual, y la empresa consulta perfiles seguros y el CV adjunto de sus postulantes. `POSTULANTE` exige una relación persistida real. Siguen pendientes cierre/reapertura/eliminación de ofertas, cambios de estado de postulaciones, completado de lecciones, respuestas verificadas a entregables y logros, y recuperación/verificación de correo. `INSCRIPTO` exige una inscripción persistida y permite descargar material incluso después de dar de baja el curso/proyecto. No se aceptan relaciones de propiedad enviadas por el cliente.
@@ -140,3 +141,4 @@ Ver también:
 - [RS18 — registro de accesos denegados](docs/seguridad/rs18-registro-accesos-denegados.md)
 - [RS19 — protección de los registros de seguridad](docs/seguridad/rs19-proteccion-registros.md)
 - [RS20 — matriz de pruebas y fallo intencional](docs/seguridad/rs20-pruebas-autorizacion.md)
+- [Mínimo privilegio en la base de datos principal (Práctica 16)](docs/seguridad/minimo-privilegio-base-datos.md)

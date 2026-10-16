@@ -45,6 +45,8 @@ class Rs19SecurityLogProtectionTest {
     @Value("${app.security-log.writer-password}") String writerPassword;
     @Value("${app.security-log.admin-user}") String auditorUser;
     @Value("${app.security-log.admin-password}") String auditorPassword;
+    @Value("${spring.datasource.username}") String databaseUser;
+    @Value("${spring.datasource.password}") String databasePassword;
 
     @AfterEach void clearRequest() { RequestContextHolder.resetRequestAttributes(); }
 
@@ -100,7 +102,9 @@ class Rs19SecurityLogProtectionTest {
         // La tabla no existe en la base de la aplicación: el almacén es otra base.
         assertThatThrownBy(() -> applicationDatabase.queryForObject("SELECT COUNT(*) FROM EVENTO_SEGURIDAD", Long.class))
             .isInstanceOf(org.springframework.dao.DataAccessException.class);
-        // Las credenciales de la base de la aplicación no abren el almacén.
+        // Ni las credenciales de la aplicación ni las del dueño de su base abren el almacén.
+        assertThatThrownBy(() -> DriverManager.getConnection(url + ";IFEXISTS=TRUE", databaseUser, databasePassword).close())
+            .isInstanceOf(SQLException.class);
         assertThatThrownBy(() -> DriverManager.getConnection(url + ";IFEXISTS=TRUE", "sa", "").close())
             .isInstanceOf(SQLException.class);
         // El escritor no puede crear un almacén nuevo con su usuario como administrador.
