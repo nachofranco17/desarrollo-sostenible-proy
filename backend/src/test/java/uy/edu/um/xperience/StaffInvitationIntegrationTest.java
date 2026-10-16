@@ -1,6 +1,6 @@
 package uy.edu.um.xperience;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.net.*;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;

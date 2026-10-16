@@ -1,6 +1,6 @@
 package uy.edu.um.xperience.profile;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -40,7 +40,7 @@ public final class ProfileUpdateParser {
         if (body == null || !body.isObject()) {
             throw new ProfileValidationException("El cuerpo debe ser un objeto JSON.");
         }
-        Iterator<String> names = body.fieldNames();
+        Iterator<String> names = body.propertyNames().iterator();
         while (names.hasNext()) {
             String field = names.next();
             if (!ALLOWED_FIELDS.contains(field)) {

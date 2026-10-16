@@ -1,6 +1,6 @@
 package uy.edu.um.xperience;
 
-import com.fasterxml.jackson.databind.*;
+import tools.jackson.databind.*;
 import java.net.*;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
@@ -98,7 +98,7 @@ class AuthIntegrationTest {
         var client = new Browser();
         String email = email();
         var payload = json.valueToTree(new RegisterRequest(email, "Ana", "Prueba", PASSWORD));
-        ((com.fasterxml.jackson.databind.node.ObjectNode) payload).put(field, "ADMIN");
+        ((tools.jackson.databind.node.ObjectNode) payload).put(field, "ADMIN");
         assertThat(client.post("/auth/register", json.writeValueAsString(payload), "application/json", true).statusCode()).isEqualTo(400);
         assertThat(accounts.byEmail(email)).isEmpty();
     }

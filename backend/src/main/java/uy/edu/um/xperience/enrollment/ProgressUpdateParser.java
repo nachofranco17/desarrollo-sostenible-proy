@@ -1,6 +1,6 @@
 package uy.edu.um.xperience.enrollment;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.util.Iterator;
 import java.util.Set;
 import uy.edu.um.xperience.security.Denegaciones;
@@ -18,7 +18,7 @@ public final class ProgressUpdateParser {
         if (body == null || !body.isObject()) {
             throw new EnrollmentValidationException("El cuerpo debe ser un objeto JSON.");
         }
-        Iterator<String> names = body.fieldNames();
+        Iterator<String> names = body.propertyNames().iterator();
         while (names.hasNext()) {
             String field = names.next();
             if (!ALLOWED_FIELDS.contains(field)) {

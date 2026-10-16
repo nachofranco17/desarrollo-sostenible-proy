@@ -78,6 +78,32 @@ La evidencia compacta del repositorio está en [evidencias/dependency-check-spri
 
 No hay supresiones nuevas ni se eliminan hallazgos para obtener artificialmente un resultado cero. Las pruebas funcionales de RF6 y RS20 no reemplazan el tratamiento de vulnerabilidades de dependencias.
 
+## Migración a Spring Boot 4.0.8 (16/10/2026)
+
+Los tres componentes con alertas del análisis final ya estaban en la última versión pública de su rama: Framework 6.2.19, Data JPA 3.5.13 y Security 6.5.11. Maven Central no publica versiones 6.2.20, 3.5.14 ni 6.5.12, así que esas alertas solo se tratan cambiando de rama. `backend/pom.xml` pasa a Spring Boot **4.0.8**, que sigue usando Java 17:
+
+| Biblioteca | Antes | Después |
+|---|---|---|
+| Spring Framework (spring-core, spring-webmvc) | 6.2.19 | 7.0.9 |
+| Spring Data JPA | 3.5.13 | 4.0.7 |
+| Spring Security | 6.5.11 | 7.0.7 |
+| Tomcat embebido | 10.1.61 | 11.0.24 (gestionado por Boot; se quita la fijación anterior) |
+| Jackson usado por la aplicación | 2.21.7 | 3.1.5 (`tools.jackson`) |
+| Jackson 2, solo como dependencia de `flyway-core` | 2.21.7 | 2.21.7 (`jackson-2-bom.version`; Boot gestionaría 2.21.5) |
+| Hibernate / Flyway / Spring Session JDBC | 6.6.53 / 11.7.2 / 3.5 | 7.2.24 / 11.14.1 / 4.0.5 |
+| Log4j API | 2.26.1 | 2.26.1 (se mantiene la fijación) |
+| H2 | 2.3.232 | 2.3.232 (fijado, ver más abajo) |
+
+Cambios de código necesarios, sin cambios de comportamiento ni de migraciones SQL:
+
+- Starters modulares de Boot 4: `spring-boot-starter-webmvc`, `-flyway`, `-session-jdbc`, `-webmvc-test` y `-security-test`.
+- Jackson 3: paquetes `tools.jackson.*`, `JacksonException` en lugar de `JsonProcessingException`, `propertyNames()` en lugar de `fieldNames()` y `findValuesAsString` en lugar de `findValuesAsText`. Las anotaciones siguen en `com.fasterxml.jackson.annotation`.
+- Security 7: `PolicyEnforcementPoint` implementa `authorize(...)`, porque se eliminó `AuthorizationManager.check(...)`. La cadena de filtros, CSRF, el login y el logout no cambian.
+- Boot 4 eliminó `server.error.include-*` y lo reemplaza por `spring.web.error.include-*`. Las claves anteriores se ignorarían sin aviso. Se renombraron para que `/error` siga sin incluir mensajes, trazas ni errores de binding.
+- **H2 se fija en 2.3.232.** Con la 2.4.240 que gestiona Boot 4 fallaron las pruebas de migración (`PolicyMigrationTest`, `Rf6MigrationTest`, `Rf6DatabaseConstraintsTest`) con `Check constraint invalid ... The database has been closed`: H2 invalida los CHECK cuando se cierra la conexión que creó la tabla. 2.3.232 conserva además el formato de los archivos `.data` existentes.
+
+Validación local (Windows, JDK 17): `mvnw clean verify` dio **460 pruebas, 0 fallos, 0 errores, 0 omitidas; BUILD SUCCESS**. El JAR contiene 88 bibliotecas con las versiones de la tabla. **Hay que repetir Dependency-Check** sobre el nuevo JAR para registrar el resultado. Esta sección no declara el informe limpio. CVE-2018-1258 y CVE-2026-47834 conservan su evaluación anterior hasta ver el nuevo informe.
+
 ## Escaneo reproducible de la aplicación
 
 Después de compilar backend e instalar frontend, desde la raíz en PowerShell:
