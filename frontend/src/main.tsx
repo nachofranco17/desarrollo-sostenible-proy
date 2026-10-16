@@ -99,8 +99,9 @@ function AccessForm({ register = false }: { register?: boolean }) {
         setMessage(result.message);
         form.reset();
       } else {
-        const body = new URLSearchParams({ correo: String(data.get('correo')), password: String(data.get('password')) });
-        await post('/auth/login', body, 'application/x-www-form-urlencoded');
+        const body = JSON.stringify({ correo: String(data.get('correo')), password: String(data.get('password')) });
+        await post('/auth/login', body);
+        form.reset();
         await auth.refresh();
         navigate('/mi-cuenta', { replace: true });
       }

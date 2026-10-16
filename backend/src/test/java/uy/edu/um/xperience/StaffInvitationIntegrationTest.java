@@ -37,7 +37,7 @@ class StaffInvitationIntegrationTest {
     @Test void rs7NewTalentCanUseOwnResourcesButNeverCompanyOperations() throws Exception {
         var browser = new Browser(); String email = email();
         assertThat(browser.write("POST", "/auth/register",
-            json.writeValueAsString(new RegisterRequest(email, "Talento", "RS7", PASSWORD)), true, null).statusCode()).isEqualTo(202);
+            json.writeValueAsString(new RegisterRequest(email, "Talento", "RS7", PASSWORD.toCharArray())), true, null).statusCode()).isEqualTo(202);
         var talent = accounts.byEmail(email).orElseThrow();
         assertThat(talent.tipoCuenta()).isEqualTo("TALENTO");
         assertThat(talent.empresaId()).isNull();
@@ -203,7 +203,7 @@ class StaffInvitationIntegrationTest {
         var company = company(); var visitor = new Browser();
         assertThat(visitor.invite(email()).statusCode()).isEqualTo(401);
         String talentEmail = email();
-        assertThat(visitor.write("POST", "/auth/register", json.writeValueAsString(new RegisterRequest(talentEmail, "Ana", "Test", PASSWORD)), true, null).statusCode()).isEqualTo(202);
+        assertThat(visitor.write("POST", "/auth/register", json.writeValueAsString(new RegisterRequest(talentEmail, "Ana", "Test", PASSWORD.toCharArray())), true, null).statusCode()).isEqualTo(202);
         assertThat(visitor.login(talentEmail).statusCode()).isEqualTo(204);
         assertThat(visitor.invite(email()).statusCode()).isEqualTo(403);
         assertThat(company.browser().write("POST", "/staff/invitations", "{\"correo\":\"" + email() + "\"}", false, null).statusCode()).isEqualTo(403);
@@ -265,7 +265,7 @@ class StaffInvitationIntegrationTest {
     private record Company(UUID id, UUID adminId, String email, Browser browser) {}
     private Company company() throws Exception {
         String email = email();
-        UUID id = provisioner.create("Empresa RF7", new RegisterRequest(email, "Admin", "Test", PASSWORD), "tests");
+        UUID id = provisioner.create("Empresa RF7", new RegisterRequest(email, "Admin", "Test", PASSWORD.toCharArray()), "tests");
         var browser = new Browser(); assertThat(browser.login(email).statusCode()).isEqualTo(204);
         return new Company(id, accounts.byEmail(email).orElseThrow().id(), email, browser);
     }
@@ -297,9 +297,8 @@ class StaffInvitationIntegrationTest {
             var csrf = json.readTree(get("/auth/csrf").body());
             return client.send(HttpRequest.newBuilder(uri("/auth/login"))
                 .header(csrf.path("headerName").asText(), csrf.path("token").asText())
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString("correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                    + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8))).build(), HttpResponse.BodyHandlers.ofString());
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(Map.of("correo", email, "password", PASSWORD)))).build(), HttpResponse.BodyHandlers.ofString());
         }
         HttpResponse<String> invite(String email) throws Exception { return write("POST", "/staff/invitations", json.writeValueAsString(Map.of("correo", email)), true, null); }
         HttpResponse<String> accept(String token, String body, boolean csrf) throws Exception { return write("POST", "/invitations/accept", body, csrf, token); }

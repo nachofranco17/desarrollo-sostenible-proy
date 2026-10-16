@@ -37,7 +37,7 @@ class Rs19StoreUnavailableTest {
     void denialStillHappensWhenTheStoreIsUnavailable(CapturedOutput output) throws Exception {
         String email = UUID.randomUUID() + "@example.test";
         provisioner.create("RS19 sin almacén",
-            new RegisterRequest(email, "Admin", "Test", "una frase suficientemente larga"), "tests");
+            new RegisterRequest(email, "Admin", "Test", "una frase suficientemente larga".toCharArray()), "tests");
         Sujeto subject = Sujeto.from(accounts.byEmail(email).orElseThrow());
 
         mvc.perform(get("/api/profile/" + UUID.randomUUID()).with(user(subject.usuarioId().toString())))

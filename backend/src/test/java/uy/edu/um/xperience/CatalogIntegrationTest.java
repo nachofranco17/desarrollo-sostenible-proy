@@ -276,7 +276,7 @@ class CatalogIntegrationTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser admin(UUID company) throws Exception {
@@ -315,9 +315,8 @@ class CatalogIntegrationTest {
 
         HttpResponse<String> login(String email) throws Exception {
             return send("POST", "/auth/login", HttpRequest.BodyPublishers.ofString(
-                "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                    + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8)),
-                "application/x-www-form-urlencoded");
+                json.writeValueAsString(Map.of("correo", email, "password", PASSWORD))),
+                "application/json");
         }
 
         private HttpResponse<String> send(String method, String path, HttpRequest.BodyPublisher body,

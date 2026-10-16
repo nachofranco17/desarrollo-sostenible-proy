@@ -206,12 +206,12 @@ class ApplicationIntegrationTest {
 
     private Company company() {
         String email = UUID.randomUUID() + "@example.test";
-        UUID id = provisioner.create("Empresa RF6 " + UUID.randomUUID(), new RegisterRequest(email, "Admin", "Prueba", PASSWORD), "tests");
+        UUID id = provisioner.create("Empresa RF6 " + UUID.randomUUID(), new RegisterRequest(email, "Admin", "Prueba", PASSWORD.toCharArray()), "tests");
         return new Company(id, accounts.byEmail(email).orElseThrow().id());
     }
     private UUID talent(String name, List<String> specializations) throws Exception {
         String email = UUID.randomUUID() + "@example.test";
-        registration.register(Sujeto.visitante(), new RegisterRequest(email, name, "Prueba", PASSWORD));
+        registration.register(Sujeto.visitante(), new RegisterRequest(email, name, "Prueba", PASSWORD.toCharArray()));
         UUID id = accounts.byEmail(email).orElseThrow().id();
         jdbc.update("UPDATE perfil_talento SET telefono = '099999999', especializaciones = ? WHERE usuario_id = ?",
             json.writeValueAsString(specializations), id);

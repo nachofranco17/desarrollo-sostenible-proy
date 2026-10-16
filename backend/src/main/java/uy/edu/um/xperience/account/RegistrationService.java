@@ -19,14 +19,16 @@ public class RegistrationService {
     }
     @Transactional
     public void register(Sujeto subject, RegisterRequest input) {
-        if (!policy.camposEscribibles(subject, "cuenta.registrar", AuthorizationService.Global.INSTANCE)
-                .containsAll(Set.of("correo", "nombre", "apellido", "password"))) {
-            throw new AccessDeniedException("Acceso denegado");
-        }
-        String hash = passwords.encode(input.password());
-        if (accounts.byEmail(input.correo()).isEmpty()) {
-            var id = accounts.create(input.correo(), input.nombre(), input.apellido(), hash, "TALENTO");
-            profiles.createEmpty(id);
+        try (input) {
+            if (!policy.camposEscribibles(subject, "cuenta.registrar", AuthorizationService.Global.INSTANCE)
+                    .containsAll(Set.of("correo", "nombre", "apellido", "password"))) {
+                throw new AccessDeniedException("Acceso denegado");
+            }
+            String hash = passwords.encode(Passwords.view(input.password()));
+            if (accounts.byEmail(input.correo()).isEmpty()) {
+                var id = accounts.create(input.correo(), input.nombre(), input.apellido(), hash, "TALENTO");
+                profiles.createEmpty(id);
+            }
         }
     }
 }

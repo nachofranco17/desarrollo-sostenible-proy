@@ -36,7 +36,7 @@ class Rs18LoggerFailureTest {
 
         String email = UUID.randomUUID() + "@example.test";
         provisioner.create("RS18 logger fail",
-            new RegisterRequest(email, "Admin", "Test", "una frase suficientemente larga"), "tests");
+            new RegisterRequest(email, "Admin", "Test", "una frase suficientemente larga".toCharArray()), "tests");
         Sujeto subject = Sujeto.from(accounts.byEmail(email).orElseThrow());
 
         // Ruta sin handler de negocio: el PEP deniega. El registro explota y aun así debe quedar 403.

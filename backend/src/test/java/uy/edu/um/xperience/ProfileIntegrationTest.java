@@ -288,7 +288,7 @@ class ProfileIntegrationTest {
     @Test
     void staffCannotAccessTalentProfileEndpoint() throws Exception {
         String email = email();
-        provisioner.create("Empresa perfil", new RegisterRequest(email, "Admin", "Prueba", PASSWORD), "test-suite");
+        provisioner.create("Empresa perfil", new RegisterRequest(email, "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
         var client = new Browser();
         assertThat(client.login(email, PASSWORD).statusCode()).isEqualTo(204);
         assertThat(client.get("/profile/me").statusCode()).isEqualTo(403);
@@ -504,13 +504,12 @@ class ProfileIntegrationTest {
                 HttpResponse.BodyHandlers.ofString());
         }
         HttpResponse<String> register(String email) throws Exception {
-            return post("/auth/register", json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD)),
+            return post("/auth/register", json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray())),
                 "application/json", true);
         }
         HttpResponse<String> login(String email, String password) throws Exception {
-            return post("/auth/login", "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                + "&password=" + URLEncoder.encode(password, StandardCharsets.UTF_8),
-                "application/x-www-form-urlencoded", true);
+            return post("/auth/login", json.writeValueAsString(Map.of("correo", email, "password", password)),
+                "application/json", true);
         }
     }
 }

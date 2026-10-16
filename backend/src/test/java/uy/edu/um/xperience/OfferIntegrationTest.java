@@ -265,7 +265,7 @@ class OfferIntegrationTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser member(UUID company, String role) throws Exception {
@@ -281,7 +281,7 @@ class OfferIntegrationTest {
         String email = email();
         var browser = new Browser();
         assertThat(browser.send("POST", "/auth/register",
-            json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD))).statusCode()).isEqualTo(202);
+            json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray()))).statusCode()).isEqualTo(202);
         assertThat(browser.login(email).statusCode()).isEqualTo(204);
         return browser;
     }
@@ -326,8 +326,7 @@ class OfferIntegrationTest {
         }
 
         HttpResponse<String> login(String email) throws Exception {
-            var response = send("POST", "/auth/login", "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8), "application/x-www-form-urlencoded");
+            var response = send("POST", "/auth/login", json.writeValueAsString(Map.of("correo", email, "password", PASSWORD)), "application/json");
             id = accounts.byEmail(email).map(a -> a.id()).orElse(null);
             return response;
         }

@@ -261,7 +261,7 @@ class Rs14FileAuthorizationTest {
         String email = email();
         var client = new Browser(email);
         assertThat(client.send("POST", "/auth/register", json.writeValueAsString(
-            new RegisterRequest(email, "Ana", "Prueba", PASSWORD))).statusCode()).isEqualTo(202);
+            new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray()))).statusCode()).isEqualTo(202);
         assertThat(client.login().statusCode()).isEqualTo(204);
         client.id = accounts.byEmail(email).orElseThrow().id();
         return client;
@@ -269,7 +269,7 @@ class Rs14FileAuthorizationTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser admin(UUID company) throws Exception {
@@ -305,9 +305,8 @@ class Rs14FileAuthorizationTest {
         Browser(String email) { this.email = email; }
 
         HttpResponse<String> login() throws Exception {
-            return send("POST", "/auth/login", "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8),
-                "application/x-www-form-urlencoded");
+            return send("POST", "/auth/login", json.writeValueAsString(Map.of("correo", email, "password", PASSWORD)),
+                "application/json");
         }
 
         HttpResponse<String> get(String path) throws Exception {

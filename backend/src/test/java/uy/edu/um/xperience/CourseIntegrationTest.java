@@ -241,17 +241,16 @@ class CourseIntegrationTest {
     }
 
     @Test
-    void courseCreationUsesAuthenticatedCompanyDespiteFormAndQueryOverrides() throws Exception {
+    void courseCreationUsesAuthenticatedCompanyDespiteLoginAndQueryOverrides() throws Exception {
         UUID company = company();
         UUID otherCompany = company();
         var editor = member(company, "EDITOR");
         String email = accounts.byId(editor.id).orElseThrow().correo();
         var client = new Browser();
-        String form = "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-            + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8)
-            + "&empresaId=" + otherCompany;
-        assertThat(client.send("POST", "/auth/login", HttpRequest.BodyPublishers.ofString(form),
-            "application/x-www-form-urlencoded").statusCode()).isEqualTo(204);
+        String forgedLogin = json.writeValueAsString(Map.of("correo", email, "password", PASSWORD, "empresaId", otherCompany));
+        assertThat(client.send("POST", "/auth/login", HttpRequest.BodyPublishers.ofString(forgedLogin),
+            "application/json").statusCode()).isEqualTo(401);
+        assertThat(client.login(email).statusCode()).isEqualTo(204);
         assertThat(json.readTree(client.get("/account").body()).path("empresaId").asText()).isEqualTo(company.toString());
 
         var created = client.send("POST", BASE + "?empresaId=" + otherCompany, course("CURSO", "De la sesión"));
@@ -346,7 +345,7 @@ class CourseIntegrationTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser admin(UUID company) throws Exception {
@@ -368,7 +367,7 @@ class CourseIntegrationTest {
     private Browser talent() throws Exception {
         String email = email();
         var client = new Browser();
-        client.send("POST", "/auth/register", json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD)));
+        client.send("POST", "/auth/register", json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray())));
         client.login(email);
         return client;
     }
@@ -450,9 +449,8 @@ class CourseIntegrationTest {
         }
         HttpResponse<String> login(String email) throws Exception {
             var response = send("POST", "/auth/login", HttpRequest.BodyPublishers.ofString(
-                "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                    + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8)),
-                "application/x-www-form-urlencoded");
+                json.writeValueAsString(Map.of("correo", email, "password", PASSWORD))),
+                "application/json");
             id = accounts.byEmail(email).map(a -> a.id()).orElse(null);
             return response;
         }

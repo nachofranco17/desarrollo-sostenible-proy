@@ -2,12 +2,15 @@ package uy.edu.um.xperience.account;
 
 import jakarta.validation.constraints.*;
 import java.util.Locale;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import uy.edu.um.xperience.security.*;
 
 public record RegisterRequest(
         @NotBlank @Email @Size(max = 254) String correo,
         @NotBlank @Size(max = 80) String nombre,
         @NotBlank @Size(max = 80) String apellido,
-        @NotBlank @Size(min = 12, max = 128) String password) {
+        @NotBlankPassword @Size(min = 12, max = 128)
+        @JsonDeserialize(using = PasswordDeserializer.class) char[] password) implements AutoCloseable {
     public RegisterRequest {
         correo = normalizeEmail(correo);
         nombre = nombre == null ? null : nombre.strip();
@@ -20,4 +23,6 @@ public record RegisterRequest(
 
     @Override
     public String toString() { return "RegisterRequest[redacted]"; }
+
+    @Override public void close() { Passwords.clear(password); }
 }

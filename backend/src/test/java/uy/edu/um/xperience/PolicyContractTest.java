@@ -61,7 +61,7 @@ class PolicyContractTest {
     }
     private Sujeto admin() {
         String email = UUID.randomUUID() + "@example.test";
-        provisioner.create("Policy test", new RegisterRequest(email, "Admin", "Test", "una frase suficientemente larga"), "tests");
+        provisioner.create("Policy test", new RegisterRequest(email, "Admin", "Test", "una frase suficientemente larga".toCharArray()), "tests");
         return Sujeto.from(accounts.byEmail(email).orElseThrow());
     }
     @Test void endpointsWithoutDeclaredOrGrantedActionAreDeniedAndReported() throws Exception {
@@ -107,14 +107,16 @@ class PolicyContractTest {
     }
     @Test void errorsWhileEvaluatingLoginDenyItBeforeCheckingCredentials(CapturedOutput output) throws Exception {
         doThrow(new IllegalStateException("simulated subject failure")).when(subjects).current();
-        mvc.perform(post("/api/auth/login").with(csrf()).param("correo", "absent@example.test").param("password", "secret"))
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType("application/json")
+            .content("{\"correo\":\"absent@example.test\",\"password\":\"secret\"}"))
             .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.message").value("Credenciales o sesión inválidas."));
         verify(registry).denegado(any(), eq("sesion.iniciar"), eq("/api/auth/login"));
         assertThat(output).contains("Fallo la evaluacion de sesion.iniciar; se deniega", "simulated subject failure");
     }
     @Test void loginAndLogoutUseThePermissionTableEvenThoughTheyAreSecurityFilters() throws Exception {
         doReturn(List.of()).when(permissions).findByRolAndAccion("VISITANTE", "sesion.iniciar");
-        mvc.perform(post("/api/auth/login").with(csrf()).param("correo", "absent@example.test").param("password", "secret"))
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType("application/json")
+            .content("{\"correo\":\"absent@example.test\",\"password\":\"secret\"}"))
             .andExpect(status().isUnauthorized());
         verify(registry).denegado(eq(Sujeto.visitante()), eq("sesion.iniciar"), eq("/api/auth/login"));
         var subject = admin();

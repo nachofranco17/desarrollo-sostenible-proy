@@ -310,7 +310,7 @@ class Rs10BackendAuthorizationTest {
         String email = email();
         var client = new Browser(email);
         assertThat(client.send("POST", "/auth/register", json.writeValueAsString(
-            new RegisterRequest(email, "Ana", "Prueba", PASSWORD)), Map.of()).statusCode()).isEqualTo(202);
+            new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray())), Map.of()).statusCode()).isEqualTo(202);
         assertThat(client.login(PASSWORD).statusCode()).isEqualTo(204);
         client.id = accounts.byEmail(email).orElseThrow().id();
         return client;
@@ -318,7 +318,7 @@ class Rs10BackendAuthorizationTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser admin(UUID company) throws Exception {
@@ -384,8 +384,7 @@ class Rs10BackendAuthorizationTest {
         Browser(String email) { this.email = email; }
 
         HttpResponse<String> login(String password) throws Exception {
-            return post("/auth/login", "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                + "&password=" + URLEncoder.encode(password, StandardCharsets.UTF_8), "application/x-www-form-urlencoded");
+            return post("/auth/login", json.writeValueAsString(Map.of("correo", email, "password", password)), "application/json");
         }
 
         HttpResponse<String> reauthenticate() throws Exception {

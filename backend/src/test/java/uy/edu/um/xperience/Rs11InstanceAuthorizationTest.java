@@ -181,7 +181,7 @@ class Rs11InstanceAuthorizationTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser member(UUID company, String role) throws Exception {
@@ -253,14 +253,13 @@ class Rs11InstanceAuthorizationTest {
 
         HttpResponse<String> register(String mail) throws Exception {
             return post("/auth/register", json.writeValueAsString(
-                new RegisterRequest(mail, "Ana", "Prueba", PASSWORD)), "application/json", true);
+                new RegisterRequest(mail, "Ana", "Prueba", PASSWORD.toCharArray())), "application/json", true);
         }
 
         HttpResponse<String> login(String mail, String password) throws Exception {
             return post("/auth/login",
-                "correo=" + URLEncoder.encode(mail, StandardCharsets.UTF_8)
-                    + "&password=" + URLEncoder.encode(password, StandardCharsets.UTF_8),
-                "application/x-www-form-urlencoded", true);
+                json.writeValueAsString(Map.of("correo", mail, "password", password)),
+                "application/json", true);
         }
 
         HttpResponse<String> get(String path) throws Exception {

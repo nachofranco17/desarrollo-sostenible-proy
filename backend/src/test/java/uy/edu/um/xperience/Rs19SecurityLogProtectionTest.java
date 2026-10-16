@@ -192,10 +192,9 @@ class Rs19SecurityLogProtectionTest {
         String email = UUID.randomUUID() + "@example.test";
         var client = new Browser(email);
         assertThat(client.send("/auth/register", json.writeValueAsString(
-            new RegisterRequest(email, "Ana", "Prueba", PASSWORD)), "application/json").statusCode()).isEqualTo(202);
-        assertThat(client.send("/auth/login", "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-            + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8),
-            "application/x-www-form-urlencoded").statusCode()).isEqualTo(204);
+            new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray())), "application/json").statusCode()).isEqualTo(202);
+        assertThat(client.send("/auth/login", json.writeValueAsString(Map.of("correo", email, "password", PASSWORD)),
+            "application/json").statusCode()).isEqualTo(204);
         client.id = accounts.byEmail(email).orElseThrow().id();
         return client;
     }

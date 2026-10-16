@@ -14,6 +14,10 @@ El registro público crea **únicamente Talentos**. Las empresas y su primer Adm
 
 Requisitos: JDK 17 o superior, Node.js 22 y npm. Maven Wrapper está incluido. Si `JAVA_HOME` está configurado, debe apuntar a un JDK.
 
+Si el seed del perfil `dev` crea la empresa demo, su cuenta es
+`admin-prueba@example.test` con la contraseña de ejemplo `una frase de prueba segura`.
+Estas credenciales son públicas y se usan únicamente para los datos locales de prueba.
+
 ### Windows (PowerShell)
 
 ```powershell
@@ -77,6 +81,13 @@ El alta crea empresa, usuario STAFF, membresía ADMIN activa y un registro en `a
 ## Cómo probar
 
 ### Registro e inicio de sesión (RF1)
+
+El manejo de contraseñas, la limpieza de arreglos y los límites de Servlet/JCA se
+documentan en [Manejo de contraseñas en memoria](docs/seguridad/manejo-contrasenas.md).
+El login usa `POST /api/auth/login` con JSON `{ "correo": "...", "password": "..." }`
+y el header CSRF existente. El formato `application/x-www-form-urlencoded` ya no se acepta
+para autenticar. La guía de [verificación con IntelliJ](docs/seguridad/verificacion-login-memoria.md)
+explica cómo inspeccionar los arreglos y buscar contraseñas entre las instancias de `String`.
 
 1. En **Registrate como Talento**, completar nombre, apellido, correo y contraseña. Se muestra un mensaje genérico y no se inicia sesión automáticamente.
 2. Ingresar con esos datos. Se abre `/mi-cuenta`, con el rol Talento.

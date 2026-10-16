@@ -21,10 +21,11 @@ public class ProvisionCommand implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         int result = 0;
         try {
-            var admin = new RegisterRequest(env("ADMIN_EMAIL"), env("ADMIN_NAME"),
-                env("ADMIN_SURNAME"), env("ADMIN_PASSWORD"));
-            var id = provisioner.create(env("COMPANY_NAME"), admin, env("PROVISION_ACTOR"));
-            System.out.println("Empresa y Administrador creados. Empresa: " + id);
+            try (var admin = new RegisterRequest(env("ADMIN_EMAIL"), env("ADMIN_NAME"),
+                env("ADMIN_SURNAME"), envPassword())) {
+                var id = provisioner.create(env("COMPANY_NAME"), admin, env("PROVISION_ACTOR"));
+                System.out.println("Empresa y Administrador creados. Empresa: " + id);
+            }
         } catch (RuntimeException error) {
             // Do not print SQL errors, credentials or personal data.
             System.err.println("Alta rechazada. Revisá los datos, la conexión y que el correo esté disponible. No se aplicaron cambios parciales.");
@@ -35,4 +36,9 @@ public class ProvisionCommand implements ApplicationRunner {
     }
 
     private static String env(String key) { return System.getenv(key); }
+
+    // Environment variables are immutable Strings owned by the JVM; only this copy can be erased.
+    private static char[] envPassword() {
+        return System.getenv("ADMIN_PASSWORD") == null ? null : System.getenv("ADMIN_PASSWORD").toCharArray();
+    }
 }

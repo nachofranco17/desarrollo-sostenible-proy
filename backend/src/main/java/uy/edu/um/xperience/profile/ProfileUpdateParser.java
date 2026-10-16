@@ -24,8 +24,6 @@ public final class ProfileUpdateParser {
     private static final int EMAIL_MAX = 254;
     private static final int PHONE_MIN = 7;
     private static final int PHONE_MAX = 30;
-    private static final int PASSWORD_MIN = 12;
-    private static final int PASSWORD_MAX = 128;
 
     private static final Pattern NAME_PATTERN = Pattern.compile(
         "^[\\p{L}](?:[\\p{L}\\p{M} ]*[\\p{L}\\p{M}])?$",
@@ -36,7 +34,7 @@ public final class ProfileUpdateParser {
 
     private ProfileUpdateParser() {}
 
-    public static ProfileUpdate parse(JsonNode body) {
+    public static ProfileUpdate parse(JsonNode body, FieldChange<char[]> actual, FieldChange<char[]> nueva) {
         if (body == null || !body.isObject()) {
             throw new ProfileValidationException("El cuerpo debe ser un objeto JSON.");
         }
@@ -59,8 +57,8 @@ public final class ProfileUpdateParser {
             parseSpecializations(body),
             parseBoolean(body, "notificarNovedadesCursos"),
             parseBoolean(body, "notificarOfertas"),
-            parsePassword(body, "passwordActual"),
-            parsePassword(body, "passwordNueva")
+            actual,
+            nueva
         );
     }
 
@@ -174,25 +172,6 @@ public final class ProfileUpdateParser {
             throw new ProfileValidationException("El campo " + field + " debe ser un booleano (true/false).");
         }
         return FieldChange.of(node.booleanValue());
-    }
-
-    private static FieldChange<String> parsePassword(JsonNode body, String field) {
-        if (!body.has(field)) {
-            return FieldChange.absent();
-        }
-        JsonNode node = body.get(field);
-        if (node.isNull()) {
-            throw new ProfileValidationException("El campo " + field + " no puede ser null.");
-        }
-        if (!node.isTextual()) {
-            throw new ProfileValidationException("El campo " + field + " debe ser texto.");
-        }
-        String value = node.asText();
-        if (value.length() < PASSWORD_MIN || value.length() > PASSWORD_MAX) {
-            throw new ProfileValidationException(
-                "La contraseña debe tener entre " + PASSWORD_MIN + " y " + PASSWORD_MAX + " caracteres.");
-        }
-        return FieldChange.of(value);
     }
 
     private static boolean containsControlChars(String value) {

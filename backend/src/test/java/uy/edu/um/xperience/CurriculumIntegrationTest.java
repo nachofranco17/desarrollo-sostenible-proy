@@ -1,5 +1,7 @@
 package uy.edu.um.xperience;
 
+import java.util.Map;
+
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -264,7 +266,7 @@ class CurriculumIntegrationTest {
         String email = UUID.randomUUID() + "@example.test";
         var browser = new Browser();
         assertThat(browser.send("/auth/register", json.writeValueAsString(
-            new RegisterRequest(email, "Ana", "Prueba", PASSWORD)), "application/json", true).statusCode())
+            new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray())), "application/json", true).statusCode())
             .isEqualTo(202);
         assertThat(browser.login(email).statusCode()).isEqualTo(204);
         browser.id = accounts.byEmail(email).orElseThrow().id();
@@ -274,7 +276,7 @@ class CurriculumIntegrationTest {
     private Browser staff(String role) throws Exception {
         String adminEmail = UUID.randomUUID() + "@example.test";
         UUID company = provisioner.create("Empresa CV " + UUID.randomUUID(),
-            new RegisterRequest(adminEmail, "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(adminEmail, "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
         String email = adminEmail;
         UUID id = accounts.byEmail(email).orElseThrow().id();
         if (!"ADMIN".equals(role)) {
@@ -331,9 +333,8 @@ class CurriculumIntegrationTest {
         }
 
         HttpResponse<String> login(String email) throws Exception {
-            return send("/auth/login", "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8),
-                "application/x-www-form-urlencoded", true);
+            return send("/auth/login", json.writeValueAsString(Map.of("correo", email, "password", PASSWORD)),
+                "application/json", true);
         }
 
         HttpResponse<String> send(String path, String body, String contentType, boolean csrf) throws Exception {
