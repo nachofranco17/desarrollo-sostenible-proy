@@ -19,7 +19,7 @@ Cada denegación que emite RS18 (`RegistroAccesosEstructurado`) se agrega a un *
 | Acceso desde la API | No existe ningún endpoint que lea los registros, así que ni un Administrador de empresa tiene un camino para verlos |
 | Creación de la base | El escritor se conecta con `IFEXISTS=TRUE`, así que nunca crea una base propia (en H2, quien crea la base queda como su administrador) |
 
-Se eligió una base separada, y no una tabla en la base de la aplicación, porque la aplicación opera su propia base con un usuario administrador. Con el almacén aparte, las credenciales con las que la aplicación modifica todos sus datos no alcanzan los registros.
+Se eligió una base separada, y no una tabla en la base de la aplicación, porque la aplicación puede modificar todos los datos de su propia base (aunque ya no como administrador; ver [mínimo privilegio en la base principal](minimo-privilegio-base-datos.md)). Con el almacén aparte, las credenciales con las que la aplicación modifica todos sus datos no alcanzan los registros.
 
 ### Aprovisionamiento
 

@@ -10,9 +10,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import uy.edu.um.xperience.account.*;
 import uy.edu.um.xperience.provision.CompanyProvisioner;
@@ -30,6 +32,9 @@ class AuthIntegrationTest {
     @Autowired PasswordEncoder passwords;
     @Autowired JdbcTemplate jdbc;
     @Autowired AuthorizationService authorization;
+    @Value("${spring.flyway.url}") String ownerUrl;
+    @Value("${spring.flyway.user}") String ownerUser;
+    @Value("${spring.flyway.password}") String ownerPassword;
 
     @Test
     void talentRegistrationLoginProtectedRouteAndLogout() throws Exception {
@@ -404,12 +409,14 @@ class AuthIntegrationTest {
         String cookie = staff.sessionCookie();
         assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
         assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
+        // The application user can only read permiso; changing the catalog is a schema-owner task.
+        var owner = new JdbcTemplate(new DriverManagerDataSource(ownerUrl, ownerUser, ownerPassword));
         try {
-            jdbc.update("DELETE FROM permiso WHERE rol = 'EDITOR' AND accion = 'curso.ver_borrador'");
+            owner.update("DELETE FROM permiso WHERE rol = 'EDITOR' AND accion = 'curso.ver_borrador'");
             assertThat(staff.get("/company/courses").statusCode()).isEqualTo(403);
             assertThat(staff.sessionCookie()).isEqualTo(cookie);
         } finally {
-            jdbc.update("INSERT INTO permiso (rol, accion, alcance) VALUES ('EDITOR', 'curso.ver_borrador', 'ORG')");
+            owner.update("INSERT INTO permiso (rol, accion, alcance) VALUES ('EDITOR', 'curso.ver_borrador', 'ORG')");
         }
         assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
         assertThat(staff.sessionCookie()).isEqualTo(cookie);
