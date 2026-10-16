@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.6 (06/10/2026)
+Versión: 1.7 (16/10/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -254,3 +254,4 @@ En desarrollo, el servidor de Vite reenvía las llamadas a `/api` hacia el backe
 4. **Identificadores UUID en todas las entidades.** Impiden enumerar recursos (R13).
 5. **`empresa_id` en toda entidad vinculada a una empresa.** Permite que el filtro por organización sea una condición directa, sin joins (R15).
 6. **Los archivos se sirven siempre a través del backend.** Se descartaron los enlaces firmados porque la descarga no atravesaría el PEP (R5). El almacenamiento no es accesible desde el navegador.
+7. **La decisión de autorización es exclusiva del backend (R10).** El frontend oculta opciones según el rol solo para la experiencia de uso. El sujeto nunca se toma de headers, cookies, parámetros ni campos de la solicitud. Detalle y pruebas en [rs10-autorizacion-en-backend.md](rs10-autorizacion-en-backend.md).

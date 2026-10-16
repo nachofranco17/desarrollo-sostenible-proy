@@ -102,7 +102,7 @@ cd backend
 
 En Windows: `.\mvnw.cmd test`.
 
-Las pruebas de integración levantan un servidor HTTP real y una base H2 en memoria. Cubren auth, perfil (RF2), cursos (RF5), invitaciones/staff (RF7), autorización por instancia (RS11), identificadores que no son llave de acceso (RS13) y registro estructurado de denegaciones (RS18). También hay pruebas MockMvc del PEP, contratos de política, fallo del logger sin fail-open, y una comparación de los 54 permisos persistidos con la tabla de `docs/seguridad/modelo-autorizacion.md`.
+Las pruebas de integración levantan un servidor HTTP real y una base H2 en memoria. Cubren auth, perfil (RF2), cursos (RF5), invitaciones/staff (RF7), autorización exclusiva en el backend (RS10), autorización por instancia (RS11), identificadores que no son llave de acceso (RS13) y registro estructurado de denegaciones (RS18). También hay pruebas MockMvc del PEP, contratos de política, fallo del logger sin fail-open, y una comparación de los 54 permisos persistidos con la tabla de `docs/seguridad/modelo-autorizacion.md`.
 
 Con el backend **dev** ejecutándose y el JAR actualizado, desde otra terminal:
 
@@ -117,7 +117,7 @@ Las pruebas E2E usan Google Chrome instalado en Windows. En macOS/Linux, instala
 ## Implementación y alcance
 
 - Backend: Spring Boot/Security, Spring Data JPA con Specifications, Flyway, Spring Session JDBC y H2.
-- Frontend: React, TypeScript y Vite. No guarda credenciales ni tokens de sesión en localStorage.
+- Frontend: React, TypeScript y Vite. No guarda credenciales, tokens de sesión, rol ni permisos en el navegador. Oculta opciones según el rol solo para la experiencia de uso; toda decisión de acceso la toma el backend (RS10).
 - Contraseñas: PBKDF2 con sal aleatoria y parámetros de Spring Security 5.8; nunca se devuelven por la API.
 - Sesiones: cookie HttpOnly, SameSite=Lax, expiración por 30 minutos de inactividad y protección CSRF también en login/logout.
 - Autorización: `@RequiereAccion` por endpoint de negocio, PEP central y evaluador de permisos vigente por solicitud. Login y logout atraviesan el mismo evaluador desde un filtro. Las lecturas usan Specifications o consultas JDBC acotadas por dueño/empresa/publicación y evaluación de instancia; se deniega por defecto.
@@ -132,6 +132,7 @@ Ver también:
 - [Contrato HTTP y decisiones de alcance](docs/autenticacion.md)
 - [Permisos mínimos y sus pruebas](docs/permisos-minimos.md)
 - [Modelo de autorización](docs/seguridad/modelo-autorizacion.md)
+- [RS10 — decisión de autorización exclusiva en el backend](docs/seguridad/rs10-autorizacion-en-backend.md)
 - [RS11 — autorización por instancia](docs/seguridad/rs11-autorizacion-por-instancia.md)
 - [RS13 — identificadores que no son llave de acceso](docs/seguridad/rs13-identificadores-no-llave-acceso.md)
 - [RS18 — registro de accesos denegados](docs/seguridad/rs18-registro-accesos-denegados.md)
