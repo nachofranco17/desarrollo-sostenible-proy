@@ -117,6 +117,6 @@ cd backend
 
 ## Alcance y pendientes
 
-RS18 solo **emite** el evento. La protección del almacén de logs (RS19), retención, SIEM o dashboards quedan fuera de alcance.
+RS18 **emite** el evento. Su protección la resuelve RS19: cada evento se codifica y se agrega a un almacén de solo agregado separado de la base de la aplicación ([rs19-proteccion-registros.md](rs19-proteccion-registros.md)). Retención, SIEM o dashboards quedan fuera de alcance.
 
 RF6 usa el mismo mecanismo para ofertas, postulaciones, perfil contextual y CV. Las rutas empresariales se clasifican como organización y las operaciones de CV como archivo, salvo que ya se haya marcado una denegación por rol o campo. Las búsquedas/filtros no se incluyen en el evento. Inscripción sigue pendiente de API de negocio.

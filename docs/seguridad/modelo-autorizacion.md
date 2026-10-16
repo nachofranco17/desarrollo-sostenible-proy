@@ -228,7 +228,7 @@ La primera etapa de RF6 solo persiste ofertas `BORRADOR`/`PUBLICADA` y postulaci
 |---|---|---|
 | Framework | Spring Boot + Spring Security | R5, R6, R8, R10 |
 | Acceso a datos | Spring Data JPA con Specifications para identidad/staff; records y JdbcTemplate con SQL acotado para perfil/catálogo/cursos/RF6 | R11, R15 |
-| Base de datos | H2 (archivo local; SQL en modo compatible con PostgreSQL) | Persistencia de sesiones, permisos y dominio. R19 (protección del almacén de logs) sigue pendiente |
+| Base de datos | H2 (archivo local; SQL en modo compatible con PostgreSQL). Los registros de seguridad van a una base H2 separada, donde la aplicación solo tiene `INSERT` ([rs19-proteccion-registros.md](rs19-proteccion-registros.md)) | Persistencia de sesiones, permisos y dominio; R19 |
 | Sesiones | Spring Session JDBC (en el servidor, no JWT) | R16 |
 | Migraciones | Flyway (esquema y carga de la tabla de permisos) | R1, R4 |
 | Archivos | Disco local (`STORAGE_DIR`). Toda descarga pasa por un endpoint del backend (`material.descargar`, `curriculum.descargar`); el backend no sirve recursos estáticos. Detalle en [rs14-autorizacion-archivos.md](rs14-autorizacion-archivos.md). El modelo prevé MinIO más adelante | R5, R14 |

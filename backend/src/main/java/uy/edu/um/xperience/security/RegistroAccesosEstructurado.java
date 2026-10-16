@@ -25,10 +25,13 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
         "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     private final Logger log = LoggerFactory.getLogger(LOGGER_NAME);
+    private final Logger failures = LoggerFactory.getLogger(RegistroAccesosEstructurado.class);
     private final ObjectMapper json;
+    private final AlmacenRegistroSeguridad store;
 
-    public RegistroAccesosEstructurado(ObjectMapper json) {
+    public RegistroAccesosEstructurado(ObjectMapper json, AlmacenRegistroSeguridad store) {
         this.json = json;
+        this.store = store;
     }
 
     @Override
@@ -54,7 +57,15 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
                 event.put("field", field);
             }
             // Allowlist only: never request body, headers, cookies, tokens or resource content.
-            log.warn("{}", json.writeValueAsString(event));
+            // Every value is encoded before it is written anywhere (RS19).
+            event.replaceAll((key, value) -> value instanceof String text ? CodificadorRegistro.codificar(text) : value);
+            String line = json.writeValueAsString(event);
+            log.warn("{}", line);
+            try {
+                store.agregar(line);
+            } catch (RuntimeException error) {
+                failures.error("No se pudo agregar el evento al almacén de registros de seguridad; la denegación se mantiene", error);
+            }
         } catch (Exception ignored) {
             // Logging must never convert a denial into an allow. Swallow and continue.
         }

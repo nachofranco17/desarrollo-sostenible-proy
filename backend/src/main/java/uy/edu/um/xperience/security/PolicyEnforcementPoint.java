@@ -54,7 +54,7 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
             }
             return new AuthorizationDecision(allowed);
         } catch (Exception error) {
-            log.error("Fallo el PEP evaluando {}; se deniega", request.getRequestURI(), error);
+            log.error("Fallo el PEP evaluando {}; se deniega", CodificadorRegistro.codificar(request.getRequestURI()), error);
             Denegaciones.marcarRolDenegado(request);
             return new AuthorizationDecision(false);
         }

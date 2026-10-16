@@ -54,7 +54,8 @@ public class Denegaciones {
             registry.denegado(subject, action, request.getRequestURI());
         } catch (RuntimeException error) {
             // A failing access log must never turn a denial into something else; the denial still happens.
-            log.error("No se pudo registrar la denegacion de {} sobre {}", action, request.getRequestURI(), error);
+            log.error("No se pudo registrar la denegacion de {} sobre {}", CodificadorRegistro.codificar(action),
+                CodificadorRegistro.codificar(request.getRequestURI()), error);
         }
     }
 
