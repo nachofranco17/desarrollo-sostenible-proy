@@ -1,0 +1,494 @@
+{
+  "descripcion": "Resumen de evidencia del analisis posterior a la migracion a Spring Boot 4.0.8. No sustituye los informes completos ni acredita ausencia de vulnerabilidades.",
+  "fechaReporteUtc": "2026-10-16T23:47:40.651952500Z",
+  "fechaContextoLocal": "2026-10-16T20:47:41.3122034-03:00",
+  "carpetaInformes": "dependency-check-sprint2-78d18bb-20261016-204653",
+  "commitBase": "78d18bb",
+  "arbolLimpioDuranteElEscaneo": true,
+  "cambiosDuranteElEscaneo": [],
+  "motor": "13.0.0",
+  "fuentesActualizadas": [
+    {
+      "name": "NVD API Last Checked",
+      "timestamp": "2026-10-16T20:38:54-03"
+    },
+    {
+      "name": "NVD API Last Modified",
+      "timestamp": "2026-10-16T23:17:02Z"
+    }
+  ],
+  "codigoSalida": 0,
+  "duracionSegundos": 47,
+  "cantidadComponentes": 1674,
+  "cantidadComponentesConAlertas": 2,
+  "cantidadIdentificadoresDistintos": 2,
+  "severidadesDelReporte": {
+    "HIGH": 1,
+    "MEDIUM": 1
+  },
+  "centralAnalyzerHabilitado": false,
+  "ossIndexHabilitado": false,
+  "analizadoresFinalizadosSegunLog": [
+    "Jar Analyzer",
+    "NVD CVE Analyzer",
+    "Known Exploited Vulnerability Analyzer",
+    "Node Audit Analyzer",
+    "RetireJS Analyzer"
+  ],
+  "exclusiones": [
+    ".git",
+    ".data",
+    ".tools",
+    ".vite",
+    "test-results",
+    "playwright-report"
+  ],
+  "alcance": "Aplicacion empaquetada y frontend instalado, incluidos devDependencies; herramientas y caches historicas se revisan en el informe amplio original.",
+  "limitaciones": [
+    "Central omitido (-SinCentral) por demoras de consultas remotas; puede afectar la identificacion de bibliotecas y producir falsos negativos.",
+    "OSS Index no ejecutado por falta de credenciales (el log lo registra como deshabilitado).",
+    "El resultado depende de la NVD consultada el 16/10/2026; nuevos avisos pueden afectar las mismas versiones.",
+    "Las 65 entradas afectadas solo en la cache de herramientas del informe inicial quedan fuera de este alcance; no se declaran corregidas.",
+    "El inventario y las severidades automaticas no acreditan por si solos explotabilidad o ausencia de otras vulnerabilidades."
+  ],
+  "hashesWindows": {
+    "jarSha256": "5F68F1614192696CAFB7B22C4C9B4B8324E242C7F314C1F94D9901C4E016C0A8",
+    "pomSha256": "814BF6462D3F0EC31262E3E73FB8886040AB8AE8DC2912EE10663A614F8477A7",
+    "packageLockSha256": "A7FC79644C1CCD413252E4A947CE95078E307A475393EA116901EE3453736416"
+  },
+  "archivosOriginales": [
+    {
+      "archivo": "dependency-check-report.json",
+      "sha256": "56D4FAFD2F19F1AE1240B55320CD95741A20EE378B3ECC6AFAF9670E65081E9E"
+    },
+    {
+      "archivo": "contexto-analisis.json",
+      "sha256": "AB8BAFF1F6373FF0ABDBA97A5BF7CCA33145776C61235E1DB2DEF4B42CAA9DC5"
+    }
+  ],
+  "cotejoInventario": {
+    "jarBibliotecas": 87,
+    "bibliotecasIdentificadasEnReporteIncluidasRelacionadas": 87,
+    "sha1Coincidentes": 87,
+    "faltantes": [],
+    "comparacion": "SHA-1 de cada JAR anidado en BOOT-INF/lib del mismo xperience.jar escaneado (SHA-256 verificado contra contexto-analisis.json) frente a las entradas y dependencias relacionadas del informe."
+  },
+  "versionesClave": {
+    "spring-boot": "4.0.8",
+    "spring-framework": "7.0.9",
+    "spring-data-jpa": "4.0.7",
+    "spring-security": "7.0.7",
+    "spring-session": "4.0.5",
+    "tomcat": "11.0.27",
+    "jackson-aplicacion": "3.1.5",
+    "jackson-2-flyway": "2.21.7",
+    "log4j-api": "2.26.1",
+    "h2": "2.3.232"
+  },
+  "cambiosRespectoDelAnalisisAnterior": {
+    "resumenAnterior": "dependency-check-sprint2-resumen.json",
+    "componentesConAlertasAntes": 3,
+    "identificadoresAntes": 19,
+    "resueltosPorActualizacion": [
+      "spring-core 6.2.19: 17 avisos; Framework 7.0.9 sin alertas.",
+      "spring-data-jpa 3.5.13: CVE-2026-47834; 4.0.7 sin alertas."
+    ],
+    "tomcatIntermedio": "Escaneo de 54bc19d (20:31) con Tomcat 11.0.24 gestionado por Boot 4.0.8: 11 CVE corregidos en 11.0.25. Se fijo tomcat.version en 11.0.27; sin alertas en este escaneo.",
+    "persisten": [
+      "CVE-2018-1258 (falso positivo, ahora sobre spring-security-core 7.0.7)"
+    ],
+    "nuevos": [
+      "CVE-2014-3625 sobre spring-session-core 4.0.5 (falso positivo)"
+    ]
+  },
+  "bibliotecas": [
+    {
+      "archivo": "HikariCP-7.0.2.jar",
+      "sha1": "c2b43c946b86a14a96342379e22b004c56c6166d"
+    },
+    {
+      "archivo": "angus-activation-2.0.3.jar",
+      "sha1": "7f80607ea5014fef0b1779e6c33d63a88a45a563"
+    },
+    {
+      "archivo": "angus-mail-2.0.5.jar",
+      "sha1": "427f6d52ec0782f7efaca0c0732042e347a6cb4f"
+    },
+    {
+      "archivo": "antlr4-runtime-4.13.2.jar",
+      "sha1": "fc3db6d844df652a3d5db31c87fa12757f13691d"
+    },
+    {
+      "archivo": "aspectjweaver-1.9.25.1.jar",
+      "sha1": "a713c790da4d794c7dfb542b550d4e44898d5e23"
+    },
+    {
+      "archivo": "byte-buddy-1.17.8.jar",
+      "sha1": "af5735f63d00ca47a9375fae5c7471a36331c6ed"
+    },
+    {
+      "archivo": "classmate-1.7.3.jar",
+      "sha1": "f61c7e7b81e9249b0f6a05914eff9d54fb09f4a0"
+    },
+    {
+      "archivo": "commons-logging-1.3.6.jar",
+      "sha1": "63e78ca6cd446c0ad166d14f03ed99e7efb3896d"
+    },
+    {
+      "archivo": "flyway-core-11.14.1.jar",
+      "sha1": "869ad74f22948c22904fd99cb78b9d5b8b8e18b4"
+    },
+    {
+      "archivo": "h2-2.3.232.jar",
+      "sha1": "4fcc05d966ccdb2812ae8b9a718f69226c0cf4e2"
+    },
+    {
+      "archivo": "hibernate-core-7.2.24.Final.jar",
+      "sha1": "307b69b6c84bb89894b3689216b762475f034869"
+    },
+    {
+      "archivo": "hibernate-models-1.0.1.jar",
+      "sha1": "3158c5f9309494b905de62c72f6f02d108aea651"
+    },
+    {
+      "archivo": "hibernate-validator-9.0.1.Final.jar",
+      "sha1": "28c0e41ecc84d1f0b8b6d81d16e0784e63364e68"
+    },
+    {
+      "archivo": "istack-commons-runtime-4.1.2.jar",
+      "sha1": "18ec117c85f3ba0ac65409136afa8e42bc74e739"
+    },
+    {
+      "archivo": "jackson-annotations-2.21.jar",
+      "sha1": "b1bc1868bf02dc0bd6c7836257a036a331005309"
+    },
+    {
+      "archivo": "jackson-core-2.21.7.jar",
+      "sha1": "5abfb904683e642f4a5458f2a78ab9308c7c5a46"
+    },
+    {
+      "archivo": "jackson-core-3.1.5.jar",
+      "sha1": "ccd7eb3269b8d33bc097b36770f367cdfe2f1150"
+    },
+    {
+      "archivo": "jackson-databind-2.21.7.jar",
+      "sha1": "a2ebbc72e3092323f0f3defa786ff3bb0c47218c"
+    },
+    {
+      "archivo": "jackson-databind-3.1.5.jar",
+      "sha1": "782178f0b1fe088803c03b85eb9a406f60519044"
+    },
+    {
+      "archivo": "jakarta.activation-api-2.1.4.jar",
+      "sha1": "9e5c2a0d75dde71a0bedc4dbdbe47b78a5dc50f8"
+    },
+    {
+      "archivo": "jakarta.annotation-api-3.0.0.jar",
+      "sha1": "54f928fadec906a99d558536756d171917b9d936"
+    },
+    {
+      "archivo": "jakarta.inject-api-2.0.1.jar",
+      "sha1": "4c28afe1991a941d7702fe1362c365f0a8641d1e"
+    },
+    {
+      "archivo": "jakarta.mail-api-2.1.5.jar",
+      "sha1": "be9b3b677ed6083f575c437ebc442a6a4bd2b931"
+    },
+    {
+      "archivo": "jakarta.persistence-api-3.2.0.jar",
+      "sha1": "bb75a113f3fa191c2c7ee7b206d8e674251b3129"
+    },
+    {
+      "archivo": "jakarta.transaction-api-2.0.1.jar",
+      "sha1": "51a520e3fae406abb84e2e1148e6746ce3f80a1a"
+    },
+    {
+      "archivo": "jakarta.validation-api-3.1.1.jar",
+      "sha1": "ec8622148afc5564235d17af80ea80288d0e7f92"
+    },
+    {
+      "archivo": "jakarta.xml.bind-api-4.0.5.jar",
+      "sha1": "161811f36cad3c65991502e80317f2f6703361df"
+    },
+    {
+      "archivo": "jaxb-core-4.0.9.jar",
+      "sha1": "3f32ec949d109d666fa30994223d1c25a47b105f"
+    },
+    {
+      "archivo": "jaxb-runtime-4.0.9.jar",
+      "sha1": "500c199572538675d2819c938fbafe34935d8d6b"
+    },
+    {
+      "archivo": "jboss-logging-3.6.3.Final.jar",
+      "sha1": "1cc9f976725720bb4a66f80af3e3aa6b9890d969"
+    },
+    {
+      "archivo": "jspecify-1.0.1.jar",
+      "sha1": "3d60fd98eb8ade73004f4195c37b6317e02cf3d7"
+    },
+    {
+      "archivo": "jul-to-slf4j-2.0.18.jar",
+      "sha1": "79739c98001d5c9d078d087d5a348ec9e474ec8f"
+    },
+    {
+      "archivo": "log4j-api-2.26.1.jar",
+      "sha1": "b9864ed8d0c01f65f3b0bf70f1447e5cc1b49c24"
+    },
+    {
+      "archivo": "log4j-to-slf4j-2.26.1.jar",
+      "sha1": "a5100727b898c513fda177a4f388299a5fe5955f"
+    },
+    {
+      "archivo": "logback-classic-1.5.38.jar",
+      "sha1": "bc5873cb4a7f502ce18ce2977d98ad26b9f96444"
+    },
+    {
+      "archivo": "logback-core-1.5.38.jar",
+      "sha1": "7b1d133b29bf42ff268cf3f71d1308b80480fb8d"
+    },
+    {
+      "archivo": "micrometer-commons-1.16.7.jar",
+      "sha1": "ed85a2983e52358be84a6c8c3522b968ff41e500"
+    },
+    {
+      "archivo": "micrometer-observation-1.16.7.jar",
+      "sha1": "5387e97e74b61892affb7c4b4cafa9df6d6ca6d2"
+    },
+    {
+      "archivo": "slf4j-api-2.0.18.jar",
+      "sha1": "78a9e7a37cd6360e0b818e86341b24123d28d4df"
+    },
+    {
+      "archivo": "snakeyaml-2.5.jar",
+      "sha1": "2d53ddec134280cb384c1e35d094e5f71c1f2316"
+    },
+    {
+      "archivo": "spring-aop-7.0.9.jar",
+      "sha1": "35f68fd8cdf30444e18835cec152f2619c4c46c7"
+    },
+    {
+      "archivo": "spring-aspects-7.0.9.jar",
+      "sha1": "c1a59e3288b75d061034da5a9af4e254d9cd4c82"
+    },
+    {
+      "archivo": "spring-beans-7.0.9.jar",
+      "sha1": "2bee42fa948a5f32761fd0838de3baa1f51c0225"
+    },
+    {
+      "archivo": "spring-boot-4.0.8.jar",
+      "sha1": "77dbf5a493af4f18687f9f58242b570a6842cca7"
+    },
+    {
+      "archivo": "spring-boot-autoconfigure-4.0.8.jar",
+      "sha1": "249e870e1d13e51c4e800e477e5d940a99d9ca75"
+    },
+    {
+      "archivo": "spring-boot-data-commons-4.0.8.jar",
+      "sha1": "0e28d34f9f488d10273d9fcfc347b1a4ac8f3b29"
+    },
+    {
+      "archivo": "spring-boot-data-jpa-4.0.8.jar",
+      "sha1": "8f7052e5d34f8b434029d812ef110c2e9e329895"
+    },
+    {
+      "archivo": "spring-boot-flyway-4.0.8.jar",
+      "sha1": "abd78ccc04b471b9aecbd34aaa80afe2dbd03974"
+    },
+    {
+      "archivo": "spring-boot-hibernate-4.0.8.jar",
+      "sha1": "5204d7d05f108c7f93e3676c518fcb652ce84685"
+    },
+    {
+      "archivo": "spring-boot-http-converter-4.0.8.jar",
+      "sha1": "587c55757cc44d6646f232253d8f70de83460454"
+    },
+    {
+      "archivo": "spring-boot-jackson-4.0.8.jar",
+      "sha1": "d98bb27112c24655e6b6b0a5dd3db75a1b4796e6"
+    },
+    {
+      "archivo": "spring-boot-jarmode-tools-4.0.8.jar",
+      "sha1": "6abbacdea38a75a58ad917b12c9dc176b4cf4018"
+    },
+    {
+      "archivo": "spring-boot-jdbc-4.0.8.jar",
+      "sha1": "5ea7d98ebfd5490d9d61c806f3e78f5e3da397d3"
+    },
+    {
+      "archivo": "spring-boot-jpa-4.0.8.jar",
+      "sha1": "72b19893fb97942ea666e13399fbd333d74300b9"
+    },
+    {
+      "archivo": "spring-boot-mail-4.0.8.jar",
+      "sha1": "770b228d2a1e352206c448ae05d333cfdf1079c4"
+    },
+    {
+      "archivo": "spring-boot-persistence-4.0.8.jar",
+      "sha1": "9d9362071081d1a9c23541e6cafc7108b9d57a94"
+    },
+    {
+      "archivo": "spring-boot-security-4.0.8.jar",
+      "sha1": "e9e9bae2c4e588efcd98f54c43385b8a212f57c8"
+    },
+    {
+      "archivo": "spring-boot-servlet-4.0.8.jar",
+      "sha1": "58a061daf1467c37cbae09149221009ca3f4b187"
+    },
+    {
+      "archivo": "spring-boot-session-4.0.8.jar",
+      "sha1": "a941ea0adc1dd3bce3cf8513db6ef406425cf14a"
+    },
+    {
+      "archivo": "spring-boot-session-jdbc-4.0.8.jar",
+      "sha1": "d507f232cdb1fdbb269191c67f79401da7b0ce33"
+    },
+    {
+      "archivo": "spring-boot-sql-4.0.8.jar",
+      "sha1": "1c5baa4f9d02a39d6d1912c85b50afa5dddca13d"
+    },
+    {
+      "archivo": "spring-boot-tomcat-4.0.8.jar",
+      "sha1": "1446ca86427d693833b7afdc1b5b94711992be15"
+    },
+    {
+      "archivo": "spring-boot-transaction-4.0.8.jar",
+      "sha1": "4e47fb913c3957ee46a93df575c57e2ca1dc9cd8"
+    },
+    {
+      "archivo": "spring-boot-validation-4.0.8.jar",
+      "sha1": "832f436284021dc3690dd173549d805062592130"
+    },
+    {
+      "archivo": "spring-boot-web-server-4.0.8.jar",
+      "sha1": "f36c87d4a1d46b39ae956baa312cc777cb23856e"
+    },
+    {
+      "archivo": "spring-boot-webmvc-4.0.8.jar",
+      "sha1": "4f362463ccf5b6e8893d5ce515f07e3df0bc84bf"
+    },
+    {
+      "archivo": "spring-context-7.0.9.jar",
+      "sha1": "7eb8e01ecf1633ddd4d64ca184194f967b6bc0aa"
+    },
+    {
+      "archivo": "spring-context-support-7.0.9.jar",
+      "sha1": "02eb98af1a2d99e07ed416c7be2fda265072b6ed"
+    },
+    {
+      "archivo": "spring-core-7.0.9.jar",
+      "sha1": "e03c619fc5b26931973277f5ba65ae47967a20e3"
+    },
+    {
+      "archivo": "spring-data-commons-4.0.7.jar",
+      "sha1": "76e5c082ff5303ca165892046e62f9d6dfe327e8"
+    },
+    {
+      "archivo": "spring-data-jpa-4.0.7.jar",
+      "sha1": "209c5c83a55718e49e81684c4c80ded7f6f0ed57"
+    },
+    {
+      "archivo": "spring-expression-7.0.9.jar",
+      "sha1": "9452ece85b97fa3e208046cc3a7e985c314b0034"
+    },
+    {
+      "archivo": "spring-jdbc-7.0.9.jar",
+      "sha1": "b1cfa486ba259e5fc93c67db9ad199ac44ac2f6d"
+    },
+    {
+      "archivo": "spring-orm-7.0.9.jar",
+      "sha1": "06e3089628cb98c4b8498d4b0c9ff0df17de6afb"
+    },
+    {
+      "archivo": "spring-security-config-7.0.7.jar",
+      "sha1": "11b21c715fb9dcdc7b81017113a6a2c4179d2d82"
+    },
+    {
+      "archivo": "spring-security-core-7.0.7.jar",
+      "sha1": "82f3843fc4ddddfb08be5899be5c2e66e62faa05"
+    },
+    {
+      "archivo": "spring-security-crypto-7.0.7.jar",
+      "sha1": "c42c051f015af3c58a4efafa03522df43df92053"
+    },
+    {
+      "archivo": "spring-security-web-7.0.7.jar",
+      "sha1": "7b40d76f6467a42f8a8965b689685dbeb6bb4650"
+    },
+    {
+      "archivo": "spring-session-core-4.0.5.jar",
+      "sha1": "7d9568d5ea1743b2d82a00f2056d8ad76763371f"
+    },
+    {
+      "archivo": "spring-session-jdbc-4.0.5.jar",
+      "sha1": "5905acc122b2daf22eb4146263684101fc72043a"
+    },
+    {
+      "archivo": "spring-tx-7.0.9.jar",
+      "sha1": "4912434272ba05818632fe87844532ae98a4af40"
+    },
+    {
+      "archivo": "spring-web-7.0.9.jar",
+      "sha1": "c42f4ce0cded1526527296726c4ed30335dfaa10"
+    },
+    {
+      "archivo": "spring-webmvc-7.0.9.jar",
+      "sha1": "53b41e6290df1a75fe0e0d16608c80a93bb63bdd"
+    },
+    {
+      "archivo": "tomcat-embed-core-11.0.27.jar",
+      "sha1": "30cc98777f843d290bbca645f15c54864cc64491"
+    },
+    {
+      "archivo": "tomcat-embed-el-11.0.27.jar",
+      "sha1": "349ae4673953057dc8d0f51f17e5cf7088cca660"
+    },
+    {
+      "archivo": "tomcat-embed-websocket-11.0.27.jar",
+      "sha1": "f94e1b5ad075e0a8d47aa8fe9c9d8d842eb1d67e"
+    },
+    {
+      "archivo": "txw2-4.0.9.jar",
+      "sha1": "70325ebdebca3e7aae1dfa395fd41fc25d8a6f4e"
+    }
+  ],
+  "componentesConAlertas": [
+    {
+      "archivo": "spring-security-core-7.0.7.jar",
+      "sha1": "82f3843fc4ddddfb08be5899be5c2e66e62faa05",
+      "avisos": [
+        {
+          "id": "CVE-2018-1258",
+          "severidadDelReporte": "HIGH",
+          "fuentePrimaria": "https://spring.io/security/cve-2018-1258/",
+          "evaluacionContextual": "El aviso oficial limita la version afectada a Spring Framework 5.0.5 (corregida en 5.0.6). La aplicacion usa Framework 7.0.9; la asociacion por CPE de spring_security sin rango de versiones es erronea.",
+          "tratamiento": "falso_positivo_documentado_sin_supresion"
+        }
+      ]
+    },
+    {
+      "archivo": "spring-session-core-4.0.5.jar",
+      "sha1": "7d9568d5ea1743b2d82a00f2056d8ad76763371f",
+      "avisos": [
+        {
+          "id": "CVE-2014-3625",
+          "severidadDelReporte": "MEDIUM",
+          "fuentePrimaria": "https://nvd.nist.gov/vuln/detail/CVE-2014-3625",
+          "evaluacionContextual": "Recorrido de directorios en el manejo de recursos estaticos de Spring Framework 3.0.4-3.2.11, 4.0.0-4.0.7 y 4.1.0-4.1.1. No afecta a Spring Session; la aplicacion usa Framework 7.0.9 y desactiva los recursos estaticos (spring.web.resources.add-mappings=false).",
+          "tratamiento": "falso_positivo_documentado_sin_supresion"
+        }
+      ]
+    }
+  ],
+  "validacion": {
+    "windowsJdk17": {
+      "tests": 468,
+      "fallos": 0,
+      "errores": 0,
+      "omitidos": 0,
+      "resultado": "BUILD SUCCESS",
+      "nota": "mvnw clean verify con el pom.xml de 78d18bb (Tomcat 11.0.27), 16/10/2026."
+    },
+    "rf6Navegador": "No repetido contra este JAR."
+  },
+  "estado": "Analisis finalizado: las dos alertas restantes son falsos positivos de asociacion de CPE, documentados sin supresion. No se declara ausencia de vulnerabilidades por las limitaciones de cobertura."
+}
