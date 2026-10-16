@@ -231,7 +231,7 @@ La primera etapa de RF6 solo persiste ofertas `BORRADOR`/`PUBLICADA` y postulaci
 | Base de datos | H2 (archivo local; SQL en modo compatible con PostgreSQL) | Persistencia de sesiones, permisos y dominio. R19 (protección del almacén de logs) sigue pendiente |
 | Sesiones | Spring Session JDBC (en el servidor, no JWT) | R16 |
 | Migraciones | Flyway (esquema y carga de la tabla de permisos) | R1, R4 |
-| Archivos | Disco local (`STORAGE_DIR`). Toda descarga pasa por un endpoint del backend (`material.descargar`, `curriculum.descargar`). El modelo prevé MinIO más adelante | R5, R14 |
+| Archivos | Disco local (`STORAGE_DIR`). Toda descarga pasa por un endpoint del backend (`material.descargar`, `curriculum.descargar`); el backend no sirve recursos estáticos. Detalle en [rs14-autorizacion-archivos.md](rs14-autorizacion-archivos.md). El modelo prevé MinIO más adelante | R5, R14 |
 | Límite de envíos | Bucket4j | Entregables |
 | Pruebas | JUnit 5 + MockMvc + servidor HTTP real sobre H2 | R20 |
 | Frontend | React + TypeScript, servido por su propio servidor (Vite en desarrollo). El backend expone solo la API | — |

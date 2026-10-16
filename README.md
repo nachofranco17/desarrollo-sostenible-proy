@@ -102,7 +102,7 @@ cd backend
 
 En Windows: `.\mvnw.cmd test`.
 
-Las pruebas de integración levantan un servidor HTTP real y una base H2 en memoria. Cubren auth, perfil (RF2), cursos (RF5), invitaciones/staff (RF7), autorización exclusiva en el backend (RS10), autorización por instancia (RS11), identificadores que no son llave de acceso (RS13) y registro estructurado de denegaciones (RS18). También hay pruebas MockMvc del PEP, contratos de política, fallo del logger sin fail-open, y una comparación de los 54 permisos persistidos con la tabla de `docs/seguridad/modelo-autorizacion.md`.
+Las pruebas de integración levantan un servidor HTTP real y una base H2 en memoria. Cubren auth, perfil (RF2), cursos (RF5), invitaciones/staff (RF7), autorización exclusiva en el backend (RS10), autorización por instancia (RS11), identificadores que no son llave de acceso (RS13), autorización de archivos (RS14) y registro estructurado de denegaciones (RS18). También hay pruebas MockMvc del PEP, contratos de política, fallo del logger sin fail-open, y una comparación de los 54 permisos persistidos con la tabla de `docs/seguridad/modelo-autorizacion.md`.
 
 Con el backend **dev** ejecutándose y el JAR actualizado, desde otra terminal:
 
@@ -123,7 +123,7 @@ Las pruebas E2E usan Google Chrome instalado en Windows. En macOS/Linux, instala
 - Autorización: `@RequiereAccion` por endpoint de negocio, PEP central y evaluador de permisos vigente por solicitud. Login y logout atraviesan el mismo evaluador desde un filtro. Las lecturas usan Specifications o consultas JDBC acotadas por dueño/empresa/publicación y evaluación de instancia; se deniega por defecto.
 - Cambio de roles: reautenticación del Administrador mediante `POST /api/auth/reauthenticate`, válida por cinco minutos y vinculada a su sesión. Se rechazan cambios sobre la propia membresía y sobre otras empresas.
 - Denegaciones: todas las rutas de rechazo invocan `RegistroAccesos`. RS18 emite un evento JSON estructurado con metadatos seguros ([docs/seguridad/rs18-registro-accesos-denegados.md](docs/seguridad/rs18-registro-accesos-denegados.md)); RS19 (protección del almacén) sigue pendiente.
-- Archivos de curso y CV: disco privado (`STORAGE_DIR`), descargados a través del backend. Los CV son PDF de hasta 5 MiB; cada postulación conserva su versión original.
+- Archivos de curso y CV: disco privado (`STORAGE_DIR`), descargados a través del backend con la misma autorización que su recurso, como adjunto y con tipo y extensión detectados por el servidor (RS14). Los CV son PDF de hasta 5 MiB; cada postulación conserva su versión original.
 
 El catálogo completo de permisos está cargado. Hay módulos de perfiles, catálogo, gestión de cursos y proyectos, inscripciones y avance de RF4, invitaciones del staff y RF6 con interfaz web. ADMIN/RECLUTADOR crean ofertas y las publican; el Talento se postula con su CV actual, y la empresa consulta perfiles seguros y el CV adjunto de sus postulantes. `POSTULANTE` exige una relación persistida real. Siguen pendientes cierre/reapertura/eliminación de ofertas, cambios de estado de postulaciones, completado de lecciones, respuestas verificadas a entregables y logros, y recuperación/verificación de correo. `INSCRIPTO` exige una inscripción persistida y permite descargar material incluso después de dar de baja el curso/proyecto. No se aceptan relaciones de propiedad enviadas por el cliente.
 
@@ -135,5 +135,6 @@ Ver también:
 - [RS10 — decisión de autorización exclusiva en el backend](docs/seguridad/rs10-autorizacion-en-backend.md)
 - [RS11 — autorización por instancia](docs/seguridad/rs11-autorizacion-por-instancia.md)
 - [RS13 — identificadores que no son llave de acceso](docs/seguridad/rs13-identificadores-no-llave-acceso.md)
+- [RS14 — archivos sujetos a las mismas reglas de autorización](docs/seguridad/rs14-autorizacion-archivos.md)
 - [RS18 — registro de accesos denegados](docs/seguridad/rs18-registro-accesos-denegados.md)
 - [RS20 — matriz de pruebas y fallo intencional](docs/seguridad/rs20-pruebas-autorizacion.md)

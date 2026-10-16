@@ -246,7 +246,7 @@ public class CourseService {
                 }
             }
         });
-        courses.addMaterial(id, subject.empresaId(), cleanFileName(file.getOriginalFilename()), type.mime(),
+        courses.addMaterial(id, subject.empresaId(), cleanFileName(file.getOriginalFilename(), type), type.mime(),
             file.getSize(), key, subject.usuarioId());
         courses.touch(id, subject.empresaId());
         return reload(subject, id);
@@ -323,17 +323,20 @@ public class CourseService {
         }
     }
 
-    /** Sólo el último segmento, sin caracteres de control ni comillas, acotado. */
-    static String cleanFileName(String original) {
-        if (original == null) {
-            return "archivo";
-        }
-        String name = original.substring(Math.max(original.lastIndexOf('/'), original.lastIndexOf('\\')) + 1);
+    /**
+     * Sólo el último segmento, sin caracteres de control ni comillas, acotado y con la extensión del
+     * tipo detectado por firma (R14).
+     */
+    static String cleanFileName(String original, FileType type) {
+        String name = original == null ? ""
+            : original.substring(Math.max(original.lastIndexOf('/'), original.lastIndexOf('\\')) + 1);
         name = name.replaceAll("[\\p{Cntrl}\"]", "").strip();
         if (name.isEmpty() || name.equals(".") || name.equals("..")) {
-            return "archivo";
+            name = "archivo";
         }
-        return name.length() <= MAX_NOMBRE_ARCHIVO ? name : name.substring(name.length() - MAX_NOMBRE_ARCHIVO);
+        String extension = type.missingExtension(name);
+        int max = MAX_NOMBRE_ARCHIVO - extension.length();
+        return (name.length() <= max ? name : name.substring(name.length() - max)) + extension;
     }
 
     private static void afterCommit(Runnable action) {
