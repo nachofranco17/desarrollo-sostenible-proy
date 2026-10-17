@@ -2,7 +2,7 @@ package uy.edu.um.xperience.account;
 
 import jakarta.validation.constraints.*;
 import java.util.Locale;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import uy.edu.um.xperience.security.*;
 
 public record RegisterRequest(

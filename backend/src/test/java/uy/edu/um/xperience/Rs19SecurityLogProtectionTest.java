@@ -1,7 +1,7 @@
 package uy.edu.um.xperience;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.*;

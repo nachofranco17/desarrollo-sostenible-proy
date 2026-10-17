@@ -1,10 +1,10 @@
 package uy.edu.um.xperience.security;
 
-import com.fasterxml.jackson.core.*;
-import com.fasterxml.jackson.databind.*;
+import tools.jackson.core.*;
+import tools.jackson.databind.*;
+import tools.jackson.databind.json.JsonMapper;
 import jakarta.servlet.ServletException;
 import jakarta.validation.Validation;
-import java.io.IOException;
 import java.nio.CharBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -20,8 +20,8 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class PasswordHandlingTest {
-    private final ObjectMapper json = new ObjectMapper()
-        .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    private final ObjectMapper json = JsonMapper.builder()
+        .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
     private final CharArrayPbkdf2PasswordEncoder passwords = new CharArrayPbkdf2PasswordEncoder();
 
     @ParameterizedTest
@@ -33,7 +33,8 @@ class PasswordHandlingTest {
             String oldHash = previous.encode(fixture);
             String newHash = passwords.encode(Passwords.view(value));
             assertThat(passwords.matches(Passwords.view(value), oldHash)).isTrue();
-            assertThat(previous.matches(fixture, newHash)).isTrue();
+            // Spring Security 7 rejects empty credentials before checking their hash.
+            assertThat(previous.matches(fixture, newHash)).isEqualTo(!fixture.isEmpty());
             assertThat(passwords.matches("incorrecta", oldHash)).isFalse();
             assertThat(newHash).hasSize(96).isNotEqualTo(passwords.encode(Passwords.view(value)));
             assertThat(value).containsExactly(fixture.toCharArray());
@@ -62,13 +63,13 @@ class PasswordHandlingTest {
     @Test void jsonPasswordsUseTheCharacterBufferAndKeepTheExistingWireFormat() throws Exception {
         JsonParser parser = mock(JsonParser.class);
         when(parser.hasToken(JsonToken.VALUE_STRING)).thenReturn(true);
-        when(parser.getTextCharacters()).thenReturn("xxsecretzz".toCharArray());
-        when(parser.getTextOffset()).thenReturn(2);
-        when(parser.getTextLength()).thenReturn(6);
+        when(parser.getStringCharacters()).thenReturn("xxsecretzz".toCharArray());
+        when(parser.getStringOffset()).thenReturn(2);
+        when(parser.getStringLength()).thenReturn(6);
         char[] value = new PasswordDeserializer().deserialize(parser, null);
         try { assertThat(value).containsExactly('s', 'e', 'c', 'r', 'e', 't'); }
         finally { Passwords.clear(value); }
-        verify(parser, never()).getText();
+        verify(parser, never()).getString();
 
         try (var input = json.readValue("{\"correo\":\"a@example.test\",\"nombre\":\"Ana\",\"apellido\":\"Test\",\"password\":\"clave \\u00f1 \\uD83D\\uDD10\"}", RegisterRequest.class)) {
             assertThat(input.password()).containsExactly("clave ñ 🔐".toCharArray());
@@ -99,14 +100,14 @@ class PasswordHandlingTest {
         char[] allocated = "una frase suficientemente larga".toCharArray();
         var parser = mock(JsonParser.class);
         when(parser.hasToken(JsonToken.VALUE_STRING)).thenReturn(true);
-        when(parser.getTextCharacters()).thenReturn(allocated);
-        when(parser.getTextLength()).thenReturn(allocated.length);
+        when(parser.getStringCharacters()).thenReturn(allocated);
+        when(parser.getStringLength()).thenReturn(allocated.length);
         AtomicReference<char[]> orphan = new AtomicReference<>();
         var filter = new PasswordCleanupFilter();
         assertThatThrownBy(() -> filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), (req, res) -> {
             orphan.set(new PasswordDeserializer().deserialize(parser, null));
             json.readValue("{\"password\":", RegisterRequest.class);
-        })).isInstanceOf(IOException.class);
+        })).isInstanceOf(JacksonException.class);
         assertErased(orphan.get());
         Passwords.clear(allocated);
     }
@@ -159,7 +160,7 @@ class PasswordHandlingTest {
     @ValueSource(strings = {"null", "[]", "{\"passwordActual\":null}", "{\"passwordNueva\":123}",
         "{\"passwordNueva\":[\"a\"]}", "{\"passwordNueva\":\"short\"}", "{\"rol\":\"ADMIN\"}"})
     void profileRejectsInvalidPasswordTypesAndForbiddenFields(String body) {
-        assertThatThrownBy(() -> json.readValue(body, ProfileUpdate.class)).isInstanceOf(JsonMappingException.class);
+        assertThatThrownBy(() -> json.readValue(body, ProfileUpdate.class)).isInstanceOf(DatabindException.class);
     }
 
     private static void assertErased(char[] value) {

@@ -1,8 +1,9 @@
 package uy.edu.um.xperience.security;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.core.JacksonException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Validator;
@@ -39,7 +40,7 @@ public final class JsonLoginAuthenticationFilter extends AbstractAuthenticationP
             }
             // Do not use getParameter(), readValue(String), a request-body cache or a JsonNode.
             input = inputReader.readValue(request.getInputStream());
-        } catch (IOException | IllegalArgumentException invalidInput) {
+        } catch (JacksonException | IOException | IllegalArgumentException invalidInput) {
             // Never attach a parser exception that might include submitted values.
             throw invalid();
         }

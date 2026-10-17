@@ -2,7 +2,7 @@ package uy.edu.um.xperience.staff;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import java.util.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;

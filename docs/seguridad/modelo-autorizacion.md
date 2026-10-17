@@ -169,7 +169,7 @@ Casos que no pasan por un controller propio y se contemplan explícitamente:
 
 - **Login y logout.** Los procesan los filtros de Spring Security, antes de llegar a cualquier controller, por lo que la anotación no los cubre. Un filtro propio que se ejecuta antes que ellos los asocia a `sesion.iniciar` y `sesion.cerrar` y consulta al mismo evaluador que el PEP.
 - **Token CSRF (`GET /api/auth/csrf`).** Lo entrega ese mismo filtro sin pasar por el PEP. Es infraestructura de Spring Security y solo devuelve el token antifalsificación de la sesión.
-- **Endpoint `/error` de Spring Boot.** Lo atiende un controller de Spring Boot sin la anotación. Solo se permite el despacho interno de error (`DispatcherType.ERROR`), que escribe la respuesta de un error ya ocurrido sin deshacer la denegación. Si el cliente pide `/error` directamente, se rechaza. La respuesta no incluye mensajes ni trazas (`server.error.*`).
+- **Endpoint `/error` de Spring Boot.** Lo atiende un controller de Spring Boot sin la anotación. Solo se permite el despacho interno de error (`DispatcherType.ERROR`), que escribe la respuesta de un error ya ocurrido sin deshacer la denegación. Si el cliente pide `/error` directamente, se rechaza. La respuesta no incluye mensajes ni trazas (`spring.web.error.*`).
 - **Rutas fuera de `/api`.** Se rechazan con `denyAll()` antes de llegar al PEP, aunque el handler tenga la anotación.
 
 ### Uso en el handler

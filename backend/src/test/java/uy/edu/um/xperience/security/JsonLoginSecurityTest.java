@@ -1,6 +1,6 @@
 package uy.edu.um.xperience.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.validation.Validation;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;

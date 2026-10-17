@@ -1,7 +1,7 @@
 package uy.edu.um.xperience.profile;
 
 import java.util.List;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import uy.edu.um.xperience.security.Passwords;
 
 @JsonDeserialize(using = ProfileUpdateDeserializer.class)

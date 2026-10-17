@@ -1,8 +1,8 @@
 package uy.edu.um.xperience.profile;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -76,7 +76,7 @@ public class ProfileRepository {
                 return List.of();
             }
             return List.copyOf(json.readValue(raw, new TypeReference<List<String>>() {}));
-        } catch (JsonProcessingException error) {
+        } catch (JacksonException error) {
             return List.of();
         }
     }
@@ -84,7 +84,7 @@ public class ProfileRepository {
     private String writeSpecializations(List<String> values) {
         try {
             return json.writeValueAsString(values == null ? List.of() : values);
-        } catch (JsonProcessingException error) {
+        } catch (JacksonException error) {
             throw new IllegalStateException("No se pudieron guardar las especializaciones", error);
         }
     }

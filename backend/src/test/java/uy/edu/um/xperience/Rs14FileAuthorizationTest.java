@@ -1,6 +1,6 @@
 package uy.edu.um.xperience;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.*;
@@ -162,7 +162,7 @@ class Rs14FileAuthorizationTest {
         var f = fixture();
         // Un PDF subido como HTML: el nombre servido conserva el texto pero termina en la extensión real.
         String upload = f.editorA.upload(COURSES + "/" + f.course + "/materials", "pagina.html", "text/html", f.materialBytes);
-        String material = json.readTree(upload).path("materiales").findValuesAsText("id").stream()
+        String material = json.readTree(upload).path("materiales").findValuesAsString("id").stream()
             .filter(id -> !id.equals(f.material.toString())).findFirst().orElseThrow();
         f.applicant.upload("/profile/me/curriculum", "cv.html", "text/html", f.cvBytes);
 

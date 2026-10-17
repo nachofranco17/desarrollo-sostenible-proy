@@ -2,7 +2,7 @@ package uy.edu.um.xperience.account;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.access.AccessDeniedException;
