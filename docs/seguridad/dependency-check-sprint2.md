@@ -64,7 +64,7 @@ El reporte inicial del JAR mostraba 81 identificadores y el final muestra 19. **
 
 Los 17 avisos de Framework se conservan individualmente en el resumen de evidencia enlazado debajo. La revisión de código no identificó uso de WebFlux, RSocket, SSE, vistas XSLT/FreeMarker, evaluación de expresiones SpEL del usuario, filtros UrlHandlerFilter ni UrlFilenameViewController. Tampoco se identificaron rutas de binding de propiedades sobre listas autoexpansibles ni renderizado HTML de errores de binding. Esto es una evaluación contextual del código, no una corrección de las versiones ni una supresión global. Para Content-Disposition se mantiene la revisión específica de los nombres de descarga y del conector Tomcat.
 
-**Estado de Dependency-Check: análisis finalizado con alertas y limitaciones documentadas. No se declara un resultado libre de vulnerabilidades.** Quedan como trabajo separado la migración a versiones con soporte y parches públicos, la revisión contextual restante y completar la cobertura de servicios externos.
+**Estado de Dependency-Check: análisis finalizado con alertas y limitaciones documentadas. No se declara un resultado libre de vulnerabilidades.** Quedan como trabajo separado la migración a versiones con soporte y parches públicos, la revisión contextual restante y completar la cobertura de servicios externos. *La migración se realizó el 16/10/2026; ver [Migración a Spring Boot 4.0.8](#migración-a-spring-boot-408-16102026) y su evidencia final.*
 
 La evidencia compacta del repositorio está en [evidencias/dependency-check-sprint2-resumen.json](evidencias/dependency-check-sprint2-resumen.json): incluye los 19 identificadores con severidad y enlace oficial, inventario de las 68 bibliotecas, hashes de los archivos originales y contexto de ejecución. Los JSON y HTML completos se conservan en la carpeta de informes indicada; el resumen no los sustituye.
 
@@ -87,7 +87,7 @@ Los tres componentes con alertas del análisis final ya estaban en la última ve
 | Spring Framework (spring-core, spring-webmvc) | 6.2.19 | 7.0.9 |
 | Spring Data JPA | 3.5.13 | 4.0.7 |
 | Spring Security | 6.5.11 | 7.0.7 |
-| Tomcat embebido | 10.1.61 | 11.0.24 (gestionado por Boot; se quita la fijación anterior) |
+| Tomcat embebido | 10.1.61 | 11.0.27 (`tomcat.version`; Boot 4.0.8 gestiona 11.0.24, ver resultado) |
 | Jackson usado por la aplicación | 2.21.7 | 3.1.5 (`tools.jackson`) |
 | Jackson 2, solo como dependencia de `flyway-core` | 2.21.7 | 2.21.7 (`jackson-2-bom.version`; Boot gestionaría 2.21.5) |
 | Hibernate / Flyway / Spring Session JDBC | 6.6.53 / 11.7.2 / 3.5 | 7.2.24 / 11.14.1 / 4.0.5 |
@@ -102,7 +102,47 @@ Cambios de código necesarios, sin cambios de comportamiento ni de migraciones S
 - Boot 4 eliminó `server.error.include-*` y lo reemplaza por `spring.web.error.include-*`. Las claves anteriores se ignorarían sin aviso. Se renombraron para que `/error` siga sin incluir mensajes, trazas ni errores de binding.
 - **H2 se fija en 2.3.232.** Con la 2.4.240 que gestiona Boot 4 fallaron las pruebas de migración (`PolicyMigrationTest`, `Rf6MigrationTest`, `Rf6DatabaseConstraintsTest`) con `Check constraint invalid ... The database has been closed`: H2 invalida los CHECK cuando se cierra la conexión que creó la tabla. 2.3.232 conserva además el formato de los archivos `.data` existentes.
 
-Validación local (Windows, JDK 17): `mvnw clean verify` dio **460 pruebas, 0 fallos, 0 errores, 0 omitidas; BUILD SUCCESS**. El JAR contiene 88 bibliotecas con las versiones de la tabla. **Hay que repetir Dependency-Check** sobre el nuevo JAR para registrar el resultado. Esta sección no declara el informe limpio. CVE-2018-1258 y CVE-2026-47834 conservan su evaluación anterior hasta ver el nuevo informe.
+Validación local (Windows, JDK 17), después de integrar Práctica 16: `mvnw clean verify` dio **468 pruebas, 0 fallos, 0 errores, 0 omitidas; BUILD SUCCESS**. Para Boot 4 se ajustó el import de `FlywayMigrationStrategy` en `PrivilegiosBaseDatos` (`org.springframework.boot.flyway.autoconfigure`).
+
+### Resultado del análisis tras la migración (16/10/2026)
+
+Se usó el script con `-SinCentral`, igual que en el análisis final anterior, y la NVD actualizada el mismo día con clave API.
+
+| Escaneo | Commit | Componentes con alertas | Identificadores |
+|---|---|---:|---:|
+| 20:31, Boot 4.0.8 con Tomcat 11.0.24 | `54bc19d`, árbol limpio | 3 | 13 |
+| 20:43, con Tomcat fijado en 11.0.27 | `54bc19d` más el cambio de `tomcat.version` (`-trabajo`) | 2 | 2 |
+| **20:47, evidencia final** | **`78d18bb`, árbol limpio** | **2** | **2** |
+
+- **Spring Framework y Spring Data JPA:** spring-core 7.0.9 y spring-data-jpa 4.0.7 no tienen alertas. Desaparecen los 17 avisos de Framework 6.2.19 y CVE-2026-47834.
+- **Tomcat 11.0.24:** el primer escaneo le asoció 11 CVE publicados después del análisis anterior (CVE-2026-65637, -65905, -65182, -68525, -65183, -66422, -68569, -65927, -68763, -73180 y -66299; 4 CRITICAL). Los rangos de NVD los dan corregidos en 11.0.25 (y en 10.1.58). Se fijó `tomcat.version` en 11.0.27, la última 11.0.x de Maven Central. El segundo escaneo no le asocia alertas.
+- **Quedan dos falsos positivos de asociación de CPE, sin supresión:**
+  - CVE-2018-1258 en spring-security-core 7.0.7: afecta solo a Framework 5.0.5.
+  - CVE-2014-3625 en spring-session-core 4.0.5: es un recorrido de directorios del manejo de recursos estáticos de Framework 3.0.4–4.1.1, sin relación con Spring Session. Además, la aplicación desactiva los recursos estáticos (`spring.web.resources.add-mappings=false`).
+
+### Evidencia final del Sprint 2
+
+Escaneo del **16/10/2026 a las 20:47:41 de Uruguay** sobre el commit `78d18bb` con el árbol limpio. Ese commit incluye la migración a Boot 4.0.8 y la fijación de Tomcat 11.0.27. Motor 13.0.0, Central deshabilitado (`-SinCentral`) y salida 0. Carpeta: `dependency-check-sprint2-78d18bb-20261016-204653`.
+
+| Dato | Valor |
+|---|---|
+| Entradas de componentes analizadas | 1.674 |
+| Componentes con alertas | 2 (ambos falsos positivos, descritos arriba) |
+| Versiones identificadas | spring-core 7.0.9, spring-data-jpa 4.0.7, spring-security-core 7.0.7, tomcat-embed-core 11.0.27 |
+| SHA-256 del JAR | `5F68F1614192696CAFB7B22C4C9B4B8324E242C7F314C1F94D9901C4E016C0A8` |
+| SHA-256 de `backend/pom.xml` | `814BF6462D3F0EC31262E3E73FB8886040AB8AE8DC2912EE10663A614F8477A7` |
+| SHA-256 de `frontend/package-lock.json` | `A7FC79644C1CCD413252E4A947CE95078E307A475393EA116901EE3453736416` |
+| SHA-256 de `dependency-check-report.json` | `56D4FAFD2F19F1AE1240B55320CD95741A20EE378B3ECC6AFAF9670E65081E9E` |
+| SHA-256 de `contexto-analisis.json` | `AB8BAFF1F6373FF0ABDBA97A5BF7CCA33145776C61235E1DB2DEF4B42CAA9DC5` |
+
+**Estado de Dependency-Check tras la migración:** no quedan alertas atribuibles a una versión afectada en el alcance de la aplicación. Las dos restantes son asociaciones erróneas de CPE. Se documentan sin agregar supresiones. Esto no declara el proyecto libre de vulnerabilidades: Central y OSS Index siguen deshabilitados, y el resultado depende de la NVD consultada ese día. Los 65 hallazgos de la caché de herramientas del informe amplio inicial siguen fuera de este alcance. La evidencia compacta de este escaneo está en [evidencias/dependency-check-sprint2-migracion-resumen.json](evidencias/dependency-check-sprint2-migracion-resumen.json). Incluye:
+
+- los dos identificadores, con su fuente y evaluación;
+- el inventario de las **87 bibliotecas** de `BOOT-INF/lib`, las 87 con el mismo SHA-1 que el informe y sin faltantes;
+- los hashes de los archivos originales y las versiones clave;
+- los cambios respecto del análisis anterior.
+
+El resumen [evidencias/dependency-check-sprint2-resumen.json](evidencias/dependency-check-sprint2-resumen.json) corresponde al análisis anterior a la migración y se conserva.
 
 ## Escaneo reproducible de la aplicación
 

@@ -7,6 +7,8 @@
     <java.version>17</java.version>
     <!-- Actualizaciones de seguridad compatibles; ver docs/seguridad/dependency-check-sprint2.md. -->
     <log4j2.version>2.26.1</log4j2.version>
+    <!-- Boot 4.0.8 gestiona Tomcat 11.0.24, afectado por CVE corregidos en 11.0.25 (CVE-2026-65637, entre otros). -->
+    <tomcat.version>11.0.27</tomcat.version>
     <!-- Jackson 2 solo llega por flyway-core; Boot 4 gestiona 2.21.5. La app usa Jackson 3. -->
     <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
     <!-- H2 2.4.240 (gestionado por Boot 4) invalida CHECK al cerrarse la conexión que creó la tabla; 2.3.232 conserva el formato de .data. -->
