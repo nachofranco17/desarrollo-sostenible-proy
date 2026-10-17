@@ -1,11 +1,10 @@
 package uy.edu.um.xperience;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import java.net.*;
 import java.net.http.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,21 +37,21 @@ class EnrollmentIntegrationTest {
         var created = talent.send("POST", ENROLLMENTS, json.writeValueAsString(Map.of("cursoId", courseId.toString())));
         assertThat(created.statusCode()).isEqualTo(201);
         JsonNode body = json.readTree(created.body());
-        assertThat(body.path("cursoId").asText()).isEqualTo(courseId.toString());
-        assertThat(body.path("tipo").asText()).isEqualTo("CURSO");
-        assertThat(body.path("titulo").asText()).isEqualTo("Inscripción Curso");
+        assertThat(body.path("cursoId").asString()).isEqualTo(courseId.toString());
+        assertThat(body.path("tipo").asString()).isEqualTo("CURSO");
+        assertThat(body.path("titulo").asString()).isEqualTo("Inscripción Curso");
         assertThat(body.path("porcentajeAvance").asInt()).isEqualTo(0);
 
         UUID talentId = accounts.byEmail(talent.email).orElseThrow().id();
         assertThat(jdbc.queryForObject(
             "SELECT talento_id FROM inscripcion WHERE id = ?", UUID.class,
-            UUID.fromString(body.path("id").asText()))).isEqualTo(talentId);
+            UUID.fromString(body.path("id").asString()))).isEqualTo(talentId);
 
         JsonNode items = items(talent.get(ENROLLMENTS + "/me"));
         assertThat(items).anySatisfy(n -> {
-            assertThat(n.path("id").asText()).isEqualTo(body.path("id").asText());
-            assertThat(n.path("cursoId").asText()).isEqualTo(courseId.toString());
-            assertThat(n.path("tipo").asText()).isEqualTo("CURSO");
+            assertThat(n.path("id").asString()).isEqualTo(body.path("id").asString());
+            assertThat(n.path("cursoId").asString()).isEqualTo(courseId.toString());
+            assertThat(n.path("tipo").asString()).isEqualTo("CURSO");
         });
     }
 
@@ -64,10 +63,10 @@ class EnrollmentIntegrationTest {
         var created = talent.send("POST", ENROLLMENTS, json.writeValueAsString(Map.of("cursoId", projectId.toString())));
         assertThat(created.statusCode()).isEqualTo(201);
         JsonNode body = json.readTree(created.body());
-        assertThat(body.path("tipo").asText()).isEqualTo("PROYECTO");
-        assertThat(body.path("titulo").asText()).isEqualTo("Inscripción Proyecto");
+        assertThat(body.path("tipo").asString()).isEqualTo("PROYECTO");
+        assertThat(body.path("titulo").asString()).isEqualTo("Inscripción Proyecto");
         assertThat(items(talent.get(ENROLLMENTS + "/me")))
-            .anyMatch(n -> projectId.toString().equals(n.path("cursoId").asText()));
+            .anyMatch(n -> projectId.toString().equals(n.path("cursoId").asString()));
     }
 
     @Test
@@ -167,7 +166,7 @@ class EnrollmentIntegrationTest {
 
         assertThat(talentB.get(ENROLLMENTS + "/" + enrollmentA).statusCode()).isIn(401, 403);
         JsonNode itemsB = items(talentB.get(ENROLLMENTS + "/me"));
-        assertThat(itemsB).noneMatch(n -> enrollmentA.toString().equals(n.path("id").asText()));
+        assertThat(itemsB).noneMatch(n -> enrollmentA.toString().equals(n.path("id").asString()));
     }
 
     @Test
@@ -231,7 +230,7 @@ class EnrollmentIntegrationTest {
     private UUID enroll(Browser talent, UUID courseId) throws Exception {
         var response = talent.send("POST", ENROLLMENTS, json.writeValueAsString(Map.of("cursoId", courseId.toString())));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private void assertPersistedProgress(UUID enrollmentId, int expected) {
@@ -265,7 +264,7 @@ class EnrollmentIntegrationTest {
         body.put("costo", new java.math.BigDecimal("0"));
         var response = client.send("POST", MANAGE, json.writeValueAsString(body));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private JsonNode items(HttpResponse<String> response) throws Exception {
@@ -275,7 +274,7 @@ class EnrollmentIntegrationTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser admin(UUID company) throws Exception {
@@ -327,16 +326,15 @@ class EnrollmentIntegrationTest {
 
         HttpResponse<String> login(String mail) throws Exception {
             return send("POST", "/auth/login", HttpRequest.BodyPublishers.ofString(
-                "correo=" + URLEncoder.encode(mail, StandardCharsets.UTF_8)
-                    + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8)),
-                "application/x-www-form-urlencoded");
+                json.writeValueAsString(Map.of("correo", mail, "password", PASSWORD))),
+                "application/json");
         }
 
         private HttpResponse<String> send(String method, String path, HttpRequest.BodyPublisher body,
                                           String contentType) throws Exception {
             var token = json.readTree(get("/auth/csrf").body());
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType)
-                .header(token.path("headerName").asText(), token.path("token").asText())
+                .header(token.path("headerName").asString(), token.path("token").asString())
                 .method(method, body).build();
             return client.send(request, HttpResponse.BodyHandlers.ofString());
         }

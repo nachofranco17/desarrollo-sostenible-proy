@@ -198,9 +198,20 @@ button.danger:hover { background: #fff0eb; }
 .course-table tr:last-child td { border-bottom: 0; }
 /* RF3: catálogo */
 .catalog-filters { margin-bottom: 22px; }
-.catalog-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.catalog-actions button { width: auto; margin: 0; }
-.catalog-actions .secondary { margin-top: 0; }
+.catalog-filters .field-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.catalog-action-cell { display: grid; gap: 8px; }
+.catalog-actions-spacer { visibility: hidden; line-height: 1.2; }
+.catalog-action-cell button { width: 100%; margin: 0; padding: 13px 12px; }
+.catalog-action-cell .secondary { margin-top: 0; }
+@media (max-width: 800px) {
+  .catalog-filters .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.catalog-title-cell { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.enrolled-badge { background: #d8f67a; color: #134b3c; padding: 4px 10px; font-size: 11px; letter-spacing: .3px; text-transform: uppercase; }
+.progress-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.progress-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.progress-bar { height: 8px; background: #e8ede3; border-radius: 999px; overflow: hidden; }
+.progress-bar > span { display: block; height: 100%; background: #134b3c; border-radius: 999px; }
 /* RF4: inscripción y avance */
 .catalog-enroll { margin-top: 24px; display: grid; gap: 12px; max-width: 360px; }
 .enrollment-progress { display: flex; gap: 8px; align-items: center; margin: 0; }
@@ -219,6 +230,24 @@ button.danger:hover { background: #fff0eb; }
 .files { list-style: none; padding: 0; margin: 8px 0 14px; }
 .files li { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid #e1e6dd; }
 .files li:last-child { border-bottom: 0; }
+/* RF6: ofertas, CV privado y postulantes */
+.offer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; }
+.offer-card { border: 1px solid #dfe4d9; border-radius: 12px; padding: 22px; display: flex; flex-direction: column; align-items: flex-start; }
+.offer-card h3 { overflow-wrap: anywhere; }
+.offer-card .button-link { margin-top: auto; margin-bottom: 0; }
+.offer-description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.offer-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.offer-actions button { width: auto; margin: 0; }
+.requirement-picker { min-width: 0; border: 1px solid #dfe4d9; border-radius: 12px; padding: 18px; }
+.requirement-picker legend { font-weight: 650; padding: 0 6px; }
+.requirement-options { max-height: 310px; overflow-y: auto; margin-top: 14px; }
+.requirement-option { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid #e1e6dd; cursor: pointer; }
+.requirement-option input { width: auto; margin-top: 5px; flex-shrink: 0; }
+.requirement-option span { overflow-wrap: anywhere; }
+.requirement-option small { display: block; font-weight: 400; margin-top: 4px; }
+.requirement-list { padding-left: 22px; line-height: 1.8; overflow-wrap: anywhere; }
+.applicant-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 14px; margin: 22px 0; }
+.applicant-filters .offer-actions { grid-column: 1 / -1; }
 footer { text-align: center; padding: 25px; font-size: 12px; }
 @media (max-width: 800px) { header { padding: 24px; } .tagline { display: none; } main { grid-template-columns: 1fr; gap: 24px; padding: 0 24px; margin-top: 0; } aside { padding: 16px 0; } h1 { font-size: 34px; letter-spacing: -1px; } aside p { font-size: 16px; } .journey { display: none; } .panel { padding: 28px; } }
 @media (max-width: 380px) { .name-fields { grid-template-columns: 1fr; } .panel { padding: 22px; } }

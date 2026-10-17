@@ -16,8 +16,9 @@ import uy.edu.um.xperience.security.Sujetos;
 
 /**
  * Inscripción y avance del Talento (RF4). El PEP ya comprobó inscripcion.crear / inscripcion.ver
- * a nivel de función; acá se resuelve la instancia (RS11): talento y curso salen de la sesión /
- * de consultas acotadas, nunca de un userId del body.
+ * a nivel de función; acá se resuelve la instancia (RS11 / RS13): talento y curso salen de la sesión /
+ * de consultas acotadas, nunca de un userId del body. El identificador de la inscripción no es llave
+ * de acceso: hace falta la relación PROPIO con el sujeto autenticado.
  */
 @Service
 public class EnrollmentService {

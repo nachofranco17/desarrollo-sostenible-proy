@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 /**
  * Toda consulta lleva la empresa, tomada de la sesión (R15): un curso de otra empresa y uno
  * inexistente dan el mismo resultado. Lecciones, entregables y materiales se buscan también por
- * curso, así que conocer su id no alcanza para llegar a ellos (R11, R13).
+ * curso, así que conocer su id no alcanza para llegar a ellos (RS11, RS13).
  */
 @Repository
 public class CourseRepository {
@@ -58,6 +58,15 @@ public class CourseRepository {
     public Optional<Course> find(UUID id, UUID empresaId) {
         return jdbc.query("SELECT * FROM curso WHERE id = ? AND empresa_id = ?", COURSE, id, empresaId)
             .stream().findFirst();
+    }
+
+    /** Acota la lectura antes de cargar datos, tanto por empresa como por inscripción persistida. */
+    public Optional<Course> findForDownload(UUID id, UUID empresaId, UUID talentoId) {
+        return jdbc.query("""
+            SELECT c.* FROM curso c WHERE c.id = ? AND (c.empresa_id = ? OR EXISTS (
+                SELECT 1 FROM inscripcion i WHERE i.curso_id = c.id AND i.talento_id = ?
+                  AND c.estado IN ('PUBLICADO', 'BAJADO')))
+            """, COURSE, id, empresaId, talentoId).stream().findFirst();
     }
 
     /** Bloquea la fila para que dos cambios concurrentes sobre el mismo curso no se pisen. */

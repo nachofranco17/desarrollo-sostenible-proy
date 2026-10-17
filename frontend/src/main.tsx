@@ -1,4 +1,4 @@
-import { StrictMode, createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { StrictMode, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, post, patch, del, ApiError, type Account, type TalentProfile } from './api';
@@ -6,38 +6,19 @@ import { CourseEditor, CourseList, NewCourse } from './gestion';
 import { CatalogList, CatalogDetailPage } from './catalogo';
 import { EnrollmentsPage } from './inscripciones';
 import './styles.css';
+import { Auth, AuthProvider } from './auth';
+import { OfferList, OfferDetailPage, CompanyOffers, OfferEditor, CurriculumPage, MyApplications, ApplicantsPage, ApplicantProfilePage } from './ofertas';
 import { StaffPage, AcceptInvitation } from './staff';
 
-type AuthState = { account: Account | null; loading: boolean; error: string; refresh: () => Promise<void>; clear: () => void };
-const Auth = createContext<AuthState>(null!);
-
-function AuthProvider({ children }: { children: ReactNode }) {
-  const [account, setAccount] = useState<Account | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  async function refresh() {
-    try {
-      setAccount(await api<Account>('/account'));
-      setError('');
-    } catch (failure) {
-      setAccount(null);
-      if (failure instanceof ApiError && [401, 403].includes(failure.status)) setError('');
-      else { setError('No pudimos conectar con el servidor.'); throw failure; }
-    } finally { setLoading(false); }
-  }
-  useEffect(() => {
-    const reload = () => { void refresh().catch(() => {}); };
-    reload();
-    window.addEventListener('focus', reload);
-    return () => window.removeEventListener('focus', reload);
-  }, []);
-  return <Auth.Provider value={{ account, loading, error, refresh, clear: () => setAccount(null) }}>{children}</Auth.Provider>;
-}
-
 // Solo decide qué mostrar; el backend vuelve a verificar el permiso en cada solicitud (R9).
+const canManageOffers = (account: Account | null) => account?.rol === 'ADMIN' || account?.rol === 'RECLUTADOR';
 const canManageCourses = (account: Account | null) => account?.rol === 'ADMIN' || account?.rol === 'EDITOR';
 
 function backLinkFor(path: string): { to: string; label: string } | null {
+  if (path.startsWith('/gestion-ofertas/') && path.includes('/postulantes/')) return { to: path.split('/postulantes/')[0] + '/postulantes', label: 'Volver a postulantes' };
+  if (path.startsWith('/gestion-ofertas/')) return { to: '/gestion-ofertas', label: 'Volver a mis ofertas' };
+  if (path.startsWith('/ofertas/')) return { to: '/ofertas', label: 'Volver a ofertas laborales' };
+  if (['/ofertas', '/gestion-ofertas', '/mi-curriculum', '/mis-postulaciones'].includes(path)) return { to: '/mi-cuenta', label: 'Volver a mi cuenta' };
   if (path === '/catalogo') return { to: '/', label: 'Volver al inicio' };
   if (path.startsWith('/catalogo/')) return { to: '/catalogo', label: 'Volver al catálogo' };
   if (path === '/inscripciones' || path === '/perfil' || path === '/staff' || path === '/gestion') {
@@ -53,9 +34,11 @@ function backLinkFor(path: string): { to: string; label: string } | null {
 
 function App() {
   const auth = useContext(Auth);
-  const path = useLocation().pathname;
-  const wide = path.startsWith('/gestion') || path.startsWith('/catalogo') || path.startsWith('/inscripciones');
+  const location = useLocation();
+  const path = location.pathname;
+  const wide = path.startsWith('/gestion') || path.startsWith('/catalogo') || path.startsWith('/inscripciones') || path.startsWith('/ofertas') || path.startsWith('/gestion-ofertas') || path === '/mis-postulaciones';
   const back = backLinkFor(path);
+  if (back && path.startsWith('/gestion-ofertas/') && path.includes('/postulantes/')) back.to += location.search;
   const courses = (page: ReactNode) => canManageCourses(auth.account) ? page : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />;
   return <>
     <header><Link to="/" className="brand" aria-label="XPerience, inicio"><span className="brand-mark">X</span>XPerience</Link><span className="tagline">Tu próximo paso empieza acá.</span></header>
@@ -68,9 +51,18 @@ function App() {
             <Route path="/" element={<Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
             <Route path="/ingresar" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm />} />
             <Route path="/registro" element={auth.account ? <Navigate to="/mi-cuenta" replace /> : <AccessForm register />} />
-            <Route path="/catalogo" element={<CatalogList />} />
-            <Route path="/catalogo/:id" element={<CatalogDetailPage account={auth.account} />} />
+          <Route path="/catalogo" element={<CatalogList account={auth.account} />} />
+          <Route path="/catalogo/:id" element={<CatalogDetailPage account={auth.account} />} />
             <Route path="/inscripciones" element={auth.account?.rol === 'TALENTO' ? <EnrollmentsPage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/ofertas" element={auth.account ? <OfferList /> : <Navigate to="/ingresar" replace />} />
+            <Route path="/ofertas/:id" element={auth.account ? <OfferDetailPage /> : <Navigate to="/ingresar" replace />} />
+            <Route path="/mi-curriculum" element={auth.account?.rol === 'TALENTO' ? <CurriculumPage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/mis-postulaciones" element={auth.account?.rol === 'TALENTO' ? <MyApplications /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/gestion-ofertas" element={canManageOffers(auth.account) ? <CompanyOffers /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/gestion-ofertas/nueva" element={canManageOffers(auth.account) ? <OfferEditor key="new" /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/gestion-ofertas/:id" element={canManageOffers(auth.account) ? <OfferEditor /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/gestion-ofertas/:id/postulantes" element={canManageOffers(auth.account) ? <ApplicantsPage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
+            <Route path="/gestion-ofertas/:id/postulantes/:applicationId/perfil" element={canManageOffers(auth.account) ? <ApplicantProfilePage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
             <Route path="/mi-cuenta" element={auth.account ? <MyAccount account={auth.account} /> : <Navigate to="/ingresar" replace />} />
             <Route path="/perfil" element={auth.account?.rol === 'TALENTO' ? <TalentProfilePage /> : <Navigate to={auth.account ? '/mi-cuenta' : '/ingresar'} replace />} />
             <Route path="/gestion" element={courses(<CourseList />)} />
@@ -107,8 +99,9 @@ function AccessForm({ register = false }: { register?: boolean }) {
         setMessage(result.message);
         form.reset();
       } else {
-        const body = new URLSearchParams({ correo: String(data.get('correo')), password: String(data.get('password')) });
-        await post('/auth/login', body, 'application/x-www-form-urlencoded');
+        const body = JSON.stringify({ correo: String(data.get('correo')), password: String(data.get('password')) });
+        await post('/auth/login', body);
+        form.reset();
         await auth.refresh();
         navigate('/mi-cuenta', { replace: true });
       }
@@ -172,6 +165,9 @@ function MyAccount({ account }: { account: Account }) {
     {account.rol === 'TALENTO' && <Link className="button-link" to="/perfil">Ver mi perfil</Link>}
     {account.rol === 'TALENTO' && <Link className="button-link" to="/inscripciones">Mis inscripciones</Link>}
     <Link className="button-link" to="/catalogo">Ver catálogo</Link>
+    <Link className="button-link" to="/ofertas">Ver ofertas laborales</Link>
+    {account.rol === 'TALENTO' && <><Link className="button-link" to="/mi-curriculum">Mi currículum</Link><Link className="button-link" to="/mis-postulaciones">Mis postulaciones</Link></>}
+    {canManageOffers(account) && <Link className="button-link" to="/gestion-ofertas">Gestionar ofertas laborales</Link>}
     {canManageCourses(account) && <Link className="button-link" to="/gestion">Gestionar cursos y proyectos</Link>}
     {account.rol === 'ADMIN' && <Link className="button-link" to="/staff">Gestionar staff</Link>}
     <button disabled={busy} onClick={verify}>Verificar acceso</button><button disabled={busy} className="secondary" onClick={logout}>Cerrar sesión</button>
@@ -386,22 +382,32 @@ function TalentProfilePage() {
           <dt>Ofertas laborales</dt><dd>{profile.notificarOfertas ? 'Activadas' : 'Desactivadas'}</dd>
         </dl>
       </section>
-      <section className="profile-section" aria-label="Progreso de cursos">
-        <h3>Progreso de cursos</h3>
+      <section className="profile-section" aria-label="Progreso de cursos y proyectos">
+        <h3>Progreso de cursos y proyectos</h3>
         {profile.progresoCursos.length === 0
-          ? <p className="empty-hint">Todavía no hay cursos con progreso para mostrar.</p>
-          : <ul>{profile.progresoCursos.map((item) => <li key={item.nombre}>{item.nombre}: {item.porcentajeAvance}% ({item.estado})</li>)}</ul>}
+          ? <p className="empty-hint">Todavía no hay progreso para mostrar. Inscribite desde el catálogo y actualizá el avance en Mis inscripciones.</p>
+          : <ul className="progress-list">{profile.progresoCursos.map((item) => (
+            <li key={item.nombre}>
+              <div className="progress-row">
+                <span>{item.nombre}</span>
+                <span className="badge">{item.estado === 'COMPLETADO' ? 'Completado' : 'En curso'} · {item.porcentajeAvance}%</span>
+              </div>
+              <div className="progress-bar" aria-hidden="true">
+                <span style={{ width: `${Math.min(100, Math.max(0, item.porcentajeAvance))}%` }} />
+              </div>
+            </li>
+          ))}</ul>}
       </section>
       <section className="profile-section" aria-label="Proyectos completados">
         <h3>Proyectos completados</h3>
         {profile.proyectosCompletados.length === 0
           ? <p className="empty-hint">Todavía no hay proyectos completados para mostrar.</p>
-          : <ul>{profile.proyectosCompletados.map((item) => <li key={item.nombre}>{item.nombre} · {item.fechaCompletado}</li>)}</ul>}
+          : <ul>{profile.proyectosCompletados.map((item) => <li key={item.nombre}>{item.nombre}{item.fechaCompletado ? ` · ${item.fechaCompletado}` : ''}</li>)}</ul>}
       </section>
       <section className="profile-section" aria-label="Logros">
         <h3>Logros</h3>
         {profile.logros.length === 0
-          ? <p className="empty-hint">Los logros se mostrarán cuando completes cursos o proyectos.</p>
+          ? <p className="empty-hint">Los logros se mostrarán cuando completes cursos o proyectos (avance 100%).</p>
           : <ul>{profile.logros.map((item) => <li key={item.titulo}>{item.titulo} · {item.origen}</li>)}</ul>}
       </section>
       <button type="button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}>Editar perfil</button>

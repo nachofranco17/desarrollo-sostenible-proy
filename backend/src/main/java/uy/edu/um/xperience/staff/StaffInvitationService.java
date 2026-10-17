@@ -39,7 +39,13 @@ public class StaffInvitationService {
                 .orElse(null);
             if (member == null) return;
         } else {
-            UUID id = accounts.create(email, "", "", passwords.encode(tokens.create()), "STAFF");
+            // A pending account has an unguessable credential, replaced when accepting the invitation.
+            char[] initialPassword = new char[64];
+            var random = new java.security.SecureRandom();
+            for (int i = 0; i < initialPassword.length; i++) initialPassword[i] = (char) ('!' + random.nextInt(94));
+            UUID id;
+            try { id = accounts.create(email, "", "", passwords.encode(Passwords.view(initialPassword)), "STAFF"); }
+            finally { Passwords.clear(initialPassword); }
             member = new Membresia(); member.usuarioId = id; member.empresaId = subject.empresaId();
             member.estado = "PENDIENTE";
         }
@@ -51,15 +57,17 @@ public class StaffInvitationService {
     }
     @Transactional
     public void accept(String token, StaffInvitationController.AcceptRequest input) {
-        // Lock and recheck: the PEP check alone cannot prevent simultaneous token reuse.
-        var member = memberships.findOne(tokens.filter(token)).orElseThrow(StaffInvitationService::denied);
-        var user = member.usuario;
-        user.nombre = input.nombre(); user.apellido = input.apellido();
-        user.passwordHash = passwords.encode(input.password());
-        member.estado = "ACTIVA";
-        member.rol = null;
-        member.invitacionHash = null; member.invitacionExpira = null;
-        memberships.flush();
+        try (input) {
+            // Lock and recheck: the PEP check alone cannot prevent simultaneous token reuse.
+            var member = memberships.findOne(tokens.filter(token)).orElseThrow(StaffInvitationService::denied);
+            var user = member.usuario;
+            user.nombre = input.nombre(); user.apellido = input.apellido();
+            user.passwordHash = passwords.encode(Passwords.view(input.password()));
+            member.estado = "ACTIVA";
+            member.rol = null;
+            member.invitacionHash = null; member.invitacionExpira = null;
+            memberships.flush();
+        }
     }
     public record MemberView(UUID usuarioId, UUID empresaId, String correo, String nombre, String apellido, String rol, String estado) {}
     @Transactional(readOnly = true)

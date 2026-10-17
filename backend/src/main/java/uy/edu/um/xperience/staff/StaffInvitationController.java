@@ -2,6 +2,7 @@ package uy.edu.um.xperience.staff;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import java.util.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -22,12 +23,14 @@ public class StaffInvitationController {
     }
     public record AcceptRequest(@NotBlank @Size(max = 80) String nombre,
             @NotBlank @Size(max = 80) String apellido,
-            @NotBlank @Size(min = 12, max = 128) String password) {
+            @NotBlankPassword @Size(min = 12, max = 128)
+            @JsonDeserialize(using = PasswordDeserializer.class) char[] password) implements AutoCloseable {
         public AcceptRequest {
             nombre = nombre == null ? null : nombre.strip();
             apellido = apellido == null ? null : apellido.strip();
         }
         @Override public String toString() { return "AcceptRequest[redacted]"; }
+        @Override public void close() { Passwords.clear(password); }
     }
     @GetMapping("/staff") @RequiereAccion("staff.ver")
     public List<StaffInvitationService.MemberView> list() { return invitations.list(subjects.current()); }
@@ -43,6 +46,6 @@ public class StaffInvitationController {
     }
     @PostMapping("/invitations/accept") @RequiereAccion("invitacion.aceptar") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void accept(@RequestHeader(InvitationTokens.HEADER) String token, @Valid @RequestBody AcceptRequest input) {
-        invitations.accept(token, input);
+        try (input) { invitations.accept(token, input); }
     }
 }

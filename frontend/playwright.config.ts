@@ -6,6 +6,8 @@ const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: './e2e',
-  use: { baseURL, browserName: 'chromium', channel: 'chrome' },
+  use: { baseURL, browserName: 'chromium',
+    channel: process.env.E2E_BROWSER_CHANNEL ?? (process.platform === 'win32' ? 'chrome' : undefined),
+    trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   webServer: { command: `npm run dev -- --port ${port}`, url: baseURL, reuseExistingServer: !process.env.CI },
 });

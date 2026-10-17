@@ -49,8 +49,15 @@ public class FileStorage {
         }
     }
 
+    /** Sólo claves generadas por este componente: UUID canónico, resuelto dentro del directorio privado. */
     private Path path(String key) {
-        UUID.fromString(key); // sólo claves generadas por este componente
-        return base.resolve(key);
+        if (key == null || !UUID.fromString(key).toString().equals(key)) {
+            throw new IllegalArgumentException("Clave de almacenamiento inválida");
+        }
+        Path file = base.resolve(key).normalize();
+        if (!base.equals(file.getParent())) {
+            throw new IllegalArgumentException("Clave de almacenamiento inválida");
+        }
+        return file;
     }
 }

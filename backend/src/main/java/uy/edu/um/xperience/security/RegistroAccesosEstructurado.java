@@ -1,6 +1,6 @@
 package uy.edu.um.xperience.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -25,10 +25,13 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
         "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     private final Logger log = LoggerFactory.getLogger(LOGGER_NAME);
+    private final Logger failures = LoggerFactory.getLogger(RegistroAccesosEstructurado.class);
     private final ObjectMapper json;
+    private final AlmacenRegistroSeguridad store;
 
-    public RegistroAccesosEstructurado(ObjectMapper json) {
+    public RegistroAccesosEstructurado(ObjectMapper json, AlmacenRegistroSeguridad store) {
         this.json = json;
+        this.store = store;
     }
 
     @Override
@@ -54,7 +57,15 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
                 event.put("field", field);
             }
             // Allowlist only: never request body, headers, cookies, tokens or resource content.
-            log.warn("{}", json.writeValueAsString(event));
+            // Every value is encoded before it is written anywhere (RS19).
+            event.replaceAll((key, value) -> value instanceof String text ? CodificadorRegistro.codificar(text) : value);
+            String line = json.writeValueAsString(event);
+            log.warn("{}", line);
+            try {
+                store.agregar(line);
+            } catch (RuntimeException error) {
+                failures.error("No se pudo agregar el evento al almacén de registros de seguridad; la denegación se mantiene", error);
+            }
         } catch (Exception ignored) {
             // Logging must never convert a denial into an allow. Swallow and continue.
         }
@@ -83,7 +94,8 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
     static String resourceType(String action, String resource) {
         String a = action == null ? "" : action;
         String path = resource == null ? "" : resource;
-        if (a.startsWith("material.") || path.contains("/materials/")) {
+        if (a.startsWith("material.") || a.startsWith("curriculum.")
+                || path.contains("/materials/") || path.endsWith("/curriculum")) {
             return "file";
         }
         if (a.startsWith("perfil.") || path.contains("/profile")) {
@@ -102,11 +114,11 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
                 || path.contains("/auth/reauthenticate")) {
             return "session";
         }
-        if (a.startsWith("oferta.")) {
-            return "offer";
-        }
-        if (a.startsWith("postulacion.")) {
+        if (a.startsWith("postulacion.") || path.contains("/applications")) {
             return "application";
+        }
+        if (a.startsWith("oferta.") || path.contains("/offers")) {
+            return "offer";
         }
         if (a.startsWith("inscripcion.") || a.startsWith("leccion.") || a.startsWith("entregable.")) {
             return "enrollment";
@@ -126,9 +138,13 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
         if (a.contains("registrar") || a.contains("invitar")) {
             return "create";
         }
+        if ("oferta.gestionar".equals(a) && path.endsWith("/publish") && method(request, "POST")) {
+            return "publish";
+        }
         String method = request == null ? "" : String.valueOf(request.getMethod());
         return switch (method) {
-            case "GET" -> path != null && path.endsWith("/company/courses") ? "list" : "read";
+            case "GET" -> path.endsWith("/company/courses") || path.endsWith("/offers")
+                    || path.endsWith("/applications") || path.endsWith("/applications/me") ? "list" : "read";
             case "POST" -> "create";
             case "PUT", "PATCH" -> "update";
             case "DELETE" -> "delete";

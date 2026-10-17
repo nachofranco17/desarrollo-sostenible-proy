@@ -1,6 +1,5 @@
 package uy.edu.um.xperience.profile;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import uy.edu.um.xperience.security.RequiereAccion;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +21,7 @@ public class ProfileController {
 
     @RequiereAccion("perfil.gestionar")
     @PatchMapping(value = "/me", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ProfileView update(@RequestBody JsonNode body) {
-        return profiles.updateOwn(ProfileUpdateParser.parse(body));
+    public ProfileView update(@RequestBody ProfileUpdate input) {
+        try (input) { return profiles.updateOwn(input); }
     }
 }

@@ -1,6 +1,6 @@
 package uy.edu.um.xperience;
 
-import com.fasterxml.jackson.databind.*;
+import tools.jackson.databind.*;
 import java.net.*;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
@@ -10,9 +10,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import uy.edu.um.xperience.account.*;
 import uy.edu.um.xperience.provision.CompanyProvisioner;
@@ -30,6 +32,9 @@ class AuthIntegrationTest {
     @Autowired PasswordEncoder passwords;
     @Autowired JdbcTemplate jdbc;
     @Autowired AuthorizationService authorization;
+    @Value("${spring.flyway.url}") String ownerUrl;
+    @Value("${spring.flyway.user}") String ownerUser;
+    @Value("${spring.flyway.password}") String ownerPassword;
 
     @Test
     void talentRegistrationLoginProtectedRouteAndLogout() throws Exception {
@@ -52,7 +57,7 @@ class AuthIntegrationTest {
         assertThat(login.headers().allValues("set-cookie").toString()).contains("HttpOnly", "SameSite=Lax");
         var profile = client.get("/account");
         assertThat(profile.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(profile.body()).path("rol").asText()).isEqualTo("TALENTO");
+        assertThat(json.readTree(profile.body()).path("rol").asString()).isEqualTo("TALENTO");
         assertThat(profile.body()).doesNotContain("password", "hash");
         assertThat(profile.headers().firstValue("cache-control").orElse("")).contains("no-store");
         assertThat(replay(oldCookie).statusCode()).isEqualTo(401);
@@ -70,7 +75,7 @@ class AuthIntegrationTest {
         assertThat(repeated.statusCode()).isEqualTo(first.statusCode());
         assertThat(repeated.body()).isEqualTo(first.body());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM usuario WHERE correo = ?", Integer.class, email)).isEqualTo(1);
-        var replacement = new RegisterRequest(email, "Otro", "Nombre", "otra clave completamente distinta");
+        var replacement = new RegisterRequest(email, "Otro", "Nombre", "otra clave completamente distinta".toCharArray());
         assertThat(client.post("/auth/register", json.writeValueAsString(replacement), "application/json", true).body()).isEqualTo(first.body());
         assertThat(client.login(email.toUpperCase(Locale.ROOT), PASSWORD).statusCode()).isEqualTo(204);
         assertThat(accounts.byEmail(email).orElseThrow().nombre()).isEqualTo("Ana");
@@ -97,8 +102,8 @@ class AuthIntegrationTest {
     void registrationRejectsPrivilegeAndCompanyFields(String field) throws Exception {
         var client = new Browser();
         String email = email();
-        var payload = json.valueToTree(new RegisterRequest(email, "Ana", "Prueba", PASSWORD));
-        ((com.fasterxml.jackson.databind.node.ObjectNode) payload).put(field, "ADMIN");
+        var payload = json.valueToTree(new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray()));
+        ((tools.jackson.databind.node.ObjectNode) payload).put(field, "ADMIN");
         assertThat(client.post("/auth/register", json.writeValueAsString(payload), "application/json", true).statusCode()).isEqualTo(400);
         assertThat(accounts.byEmail(email)).isEmpty();
     }
@@ -125,14 +130,41 @@ class AuthIntegrationTest {
     }
 
     @Test
+    void loginRequiresJsonAndDoesNotFallBackToServletFormCredentials() throws Exception {
+        var client = new Browser();
+        String email = email(); client.register(email);
+        String form = "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
+            + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8);
+        assertThat(client.post("/auth/login", form, "application/x-www-form-urlencoded", true).statusCode()).isEqualTo(401);
+        assertThat(client.get("/account").statusCode()).isEqualTo(401);
+        assertThat(client.login(email, PASSWORD).statusCode()).isEqualTo(204);
+    }
+
+    @Test
+    void jsonLoginRejectsMalformedOrPrivilegedFieldsWithTheGenericCredentialError() throws Exception {
+        var client = new Browser();
+        String email = email(); client.register(email);
+        var normalFailure = client.login(email, "incorrecta");
+        for (String body : List.of(
+                json.writeValueAsString(Map.of("correo", email, "password", PASSWORD, "rol", "ADMIN")),
+                json.writeValueAsString(Map.of("correo", email, "password", List.of(PASSWORD))),
+                json.writeValueAsString(Map.of("correo", email, "password", PASSWORD)) + " {}")) {
+            var rejected = client.post("/auth/login", body, "application/json", true);
+            assertThat(rejected.statusCode()).isEqualTo(401);
+            assertThat(rejected.body()).isEqualTo(normalFailure.body()).doesNotContain(PASSWORD);
+            assertThat(client.get("/account").statusCode()).isEqualTo(401);
+        }
+    }
+
+    @Test
     void writesRequireCsrfIncludingLoginAndLogout() throws Exception {
         var client = new Browser();
         String email = email();
-        var input = json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD));
+        var input = json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray()));
         assertThat(client.post("/auth/register", input, "application/json", false).statusCode()).isEqualTo(403);
         assertThat(accounts.byEmail(email)).isEmpty();
         client.register(email);
-        assertThat(client.post("/auth/login", "correo=" + email + "&password=x", "application/x-www-form-urlencoded", false).statusCode()).isEqualTo(403);
+        assertThat(client.post("/auth/login", json.writeValueAsString(Map.of("correo", email, "password", PASSWORD)), "application/json", false).statusCode()).isEqualTo(403);
         client.login(email, PASSWORD);
         assertThat(client.post("/auth/logout", "", "application/json", false).statusCode()).isEqualTo(403);
         assertThat(client.get("/account").statusCode()).isEqualTo(200);
@@ -142,7 +174,7 @@ class AuthIntegrationTest {
     void rejectsInvalidRegistrationWithoutCreatingAccount() throws Exception {
         var client = new Browser();
         String email = email();
-        var invalid = new RegisterRequest(email, " ", "Prueba", "corta");
+        var invalid = new RegisterRequest(email, " ", "Prueba", "corta".toCharArray());
         assertThat(client.post("/auth/register", json.writeValueAsString(invalid), "application/json", true).statusCode()).isEqualTo(400);
         assertThat(accounts.byEmail(email)).isEmpty();
     }
@@ -150,7 +182,7 @@ class AuthIntegrationTest {
     @Test
     void provisionCreatesCompanyAdminAndAuditAtomicallyAndAdminCanLogInAndOut() throws Exception {
         String email = email();
-        var input = new RegisterRequest(email, "Admin", "Prueba", PASSWORD);
+        var input = new RegisterRequest(email, "Admin", "Prueba", PASSWORD.toCharArray());
         UUID company = provisioner.create("Empresa de prueba", input, "test-suite");
         var admin = accounts.byEmail(email).orElseThrow();
         assertThat(admin.tipoCuenta()).isEqualTo("STAFF");
@@ -164,8 +196,8 @@ class AuthIntegrationTest {
         assertThat(client.login(email, PASSWORD).statusCode()).isEqualTo(204);
         var profile = client.get("/account");
         assertThat(profile.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(profile.body()).path("empresaId").asText()).isEqualTo(company.toString());
-        assertThat(json.readTree(profile.body()).path("rol").asText()).isEqualTo("ADMIN");
+        assertThat(json.readTree(profile.body()).path("empresaId").asString()).isEqualTo(company.toString());
+        assertThat(json.readTree(profile.body()).path("rol").asString()).isEqualTo("ADMIN");
         assertThat(client.post("/auth/logout", "", "application/json", true).statusCode()).isEqualTo(204);
         assertThat(client.get("/account").statusCode()).isEqualTo(401);
     }
@@ -175,12 +207,12 @@ class AuthIntegrationTest {
     void allActiveStaffRolesCanSignInAndMembershipRevocationTakesEffect(String role) throws Exception {
         // RF7 is separate: this fixture represents an invitation already accepted and assigned a role.
         String email = email();
-        provisioner.create("Empresa staff", new RegisterRequest(email, "Staff", "Prueba", PASSWORD), "test-suite");
+        provisioner.create("Empresa staff", new RegisterRequest(email, "Staff", "Prueba", PASSWORD.toCharArray()), "test-suite");
         UUID id = accounts.byEmail(email).orElseThrow().id();
         jdbc.update("UPDATE membresia SET rol = ? WHERE usuario_id = ?", role, id);
         var client = new Browser();
         assertThat(client.login(email, PASSWORD).statusCode()).isEqualTo(204);
-        assertThat(json.readTree(client.get("/account").body()).path("rol").asText()).isEqualTo(role);
+        assertThat(json.readTree(client.get("/account").body()).path("rol").asString()).isEqualTo(role);
         jdbc.update("UPDATE membresia SET estado = 'BAJA' WHERE usuario_id = ?", id);
         assertThat(client.get("/account").statusCode()).isEqualTo(403);
         assertThat(client.get("/account").statusCode()).isEqualTo(401);
@@ -252,7 +284,7 @@ class AuthIntegrationTest {
         String sessionBefore = staff.sessionCookie();
         var account = staff.get("/account");
         assertThat(account.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(account.body()).path("rol").asText()).isEqualTo("RECLUTADOR");
+        assertThat(json.readTree(account.body()).path("rol").asString()).isEqualTo("RECLUTADOR");
         assertThat(staff.sessionCookie()).isEqualTo(sessionBefore);
         for (String action : List.of("oferta.gestionar", "postulacion.ver_listado")) {
             assertThat(authorization.allowed(member.id(), action, ResourceAccess.company(e1.companyId()))).as(action + " E1").isTrue();
@@ -269,7 +301,7 @@ class AuthIntegrationTest {
         assertThat(admin.patch("/staff/" + member.id() + "/rol", "{\"rol\":\"EDITOR\"}", true).statusCode()).isEqualTo(204);
         assertThat(authorization.allowed(member.id(), "oferta.gestionar", ResourceAccess.company(e1.companyId()))).isFalse();
         assertThat(authorization.allowed(member.id(), "curso.gestionar", ResourceAccess.company(e1.companyId()))).isTrue();
-        assertThat(json.readTree(staff.get("/account").body()).path("rol").asText()).isEqualTo("EDITOR");
+        assertThat(json.readTree(staff.get("/account").body()).path("rol").asString()).isEqualTo("EDITOR");
         assertThat(staff.sessionCookie()).isEqualTo(sessionBefore);
         jdbc.update("UPDATE membresia SET rol = NULL WHERE usuario_id = ?", member.id());
         assertThat(authorization.allowed(member.id(), "curso.gestionar", ResourceAccess.company(e1.companyId()))).isFalse();
@@ -404,12 +436,14 @@ class AuthIntegrationTest {
         String cookie = staff.sessionCookie();
         assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
         assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
+        // The application user can only read permiso; changing the catalog is a schema-owner task.
+        var owner = new JdbcTemplate(new DriverManagerDataSource(ownerUrl, ownerUser, ownerPassword));
         try {
-            jdbc.update("DELETE FROM permiso WHERE rol = 'EDITOR' AND accion = 'curso.ver_borrador'");
+            owner.update("DELETE FROM permiso WHERE rol = 'EDITOR' AND accion = 'curso.ver_borrador'");
             assertThat(staff.get("/company/courses").statusCode()).isEqualTo(403);
             assertThat(staff.sessionCookie()).isEqualTo(cookie);
         } finally {
-            jdbc.update("INSERT INTO permiso (rol, accion, alcance) VALUES ('EDITOR', 'curso.ver_borrador', 'ORG')");
+            owner.update("INSERT INTO permiso (rol, accion, alcance) VALUES ('EDITOR', 'curso.ver_borrador', 'ORG')");
         }
         assertThat(staff.get("/company/courses").statusCode()).isEqualTo(200);
         assertThat(staff.sessionCookie()).isEqualTo(cookie);
@@ -459,7 +493,7 @@ class AuthIntegrationTest {
 
     private CompanyFixture company() {
         String email = email();
-        UUID id = provisioner.create("Empresa permisos", new RegisterRequest(email, "Admin", "Prueba", PASSWORD), "test-suite");
+        UUID id = provisioner.create("Empresa permisos", new RegisterRequest(email, "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
         return new CompanyFixture(id, accounts.byEmail(email).orElseThrow());
     }
 
@@ -494,16 +528,15 @@ class AuthIntegrationTest {
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType);
             if (csrf) {
                 var token = json.readTree(get("/auth/csrf").body());
-                request.header(token.path("headerName").asText(), token.path("token").asText());
+                request.header(token.path("headerName").asString(), token.path("token").asString());
             }
             return client.send(request.method(method, HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
         }
         HttpResponse<String> register(String email) throws Exception {
-            return post("/auth/register", json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD)), "application/json", true);
+            return post("/auth/register", json.writeValueAsString(new RegisterRequest(email, "Ana", "Prueba", PASSWORD.toCharArray())), "application/json", true);
         }
         HttpResponse<String> login(String email, String password) throws Exception {
-            return post("/auth/login", "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                + "&password=" + URLEncoder.encode(password, StandardCharsets.UTF_8), "application/x-www-form-urlencoded", true);
+            return post("/auth/login", json.writeValueAsString(Map.of("correo", email, "password", password)), "application/json", true);
         }
         HttpResponse<String> reauthenticate(String password) throws Exception {
             return post("/auth/reauthenticate", json.writeValueAsString(Map.of("password", password)), "application/json", true);
