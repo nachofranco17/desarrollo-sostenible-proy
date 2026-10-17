@@ -5,11 +5,9 @@ import tools.jackson.databind.ObjectMapper;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,9 +55,9 @@ class OfferIntegrationTest {
             data("  Desarrollador Java  ", List.of(course, project)));
         assertThat(created.statusCode()).isEqualTo(201);
         JsonNode body = json.readTree(created.body());
-        UUID id = UUID.fromString(body.path("id").asText());
-        assertThat(body.path("titulo").asText()).isEqualTo("Desarrollador Java");
-        assertThat(body.path("estado").asText()).isEqualTo("BORRADOR");
+        UUID id = UUID.fromString(body.path("id").asString());
+        assertThat(body.path("titulo").asString()).isEqualTo("Desarrollador Java");
+        assertThat(body.path("estado").asString()).isEqualTo("BORRADOR");
         assertThat(body.path("cursosRequeridos")).hasSize(2);
         assertThat(jdbc.queryForMap("SELECT empresa_id, creado_por FROM oferta WHERE id = ?", id))
             .containsEntry("empresa_id", company).containsEntry("creado_por", staff.id);
@@ -72,7 +70,7 @@ class OfferIntegrationTest {
             .isEqualTo(1);
         var published = staff.send("POST", COMPANY + "/" + id + "/publish", "{}");
         assertThat(published.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(published.body()).path("estado").asText()).isEqualTo("PUBLICADA");
+        assertThat(json.readTree(published.body()).path("estado").asString()).isEqualTo("PUBLICADA");
         assertThat(staff.send("PUT", COMPANY + "/" + id, data("Cambio posterior", List.of())).statusCode())
             .isEqualTo(409);
         assertThat(staff.send("POST", COMPANY + "/" + id + "/publish", "").statusCode()).isEqualTo(409);
@@ -110,9 +108,9 @@ class OfferIntegrationTest {
         var list = reader.get(PUBLISHED);
         assertThat(list.statusCode()).isEqualTo(200);
         assertThat(json.readTree(list.body()))
-            .allMatch(n -> "PUBLICADA".equals(n.path("estado").asText()))
-            .anyMatch(n -> published.toString().equals(n.path("id").asText()))
-            .noneMatch(n -> draft.toString().equals(n.path("id").asText()));
+            .allMatch(n -> "PUBLICADA".equals(n.path("estado").asString()))
+            .anyMatch(n -> published.toString().equals(n.path("id").asString()))
+            .noneMatch(n -> draft.toString().equals(n.path("id").asString()));
         assertThat(reader.get(PUBLISHED + "/" + published).statusCode()).isEqualTo(200);
         var hidden = reader.get(PUBLISHED + "/" + draft);
         var missing = reader.get(PUBLISHED + "/" + UUID.randomUUID());
@@ -210,7 +208,7 @@ class OfferIntegrationTest {
         assertThat(recruiterB.get(COMPANY + "?empresaId=" + companyA).statusCode()).isEqualTo(400);
         var ownList = recruiterB.get(COMPANY);
         assertThat(json.readTree(ownList.body())).hasSize(1);
-        assertThat(json.readTree(ownList.body()).get(0).path("id").asText()).isEqualTo(idB.toString());
+        assertThat(json.readTree(ownList.body()).get(0).path("id").asString()).isEqualTo(idB.toString());
         var foreign = recruiterB.get(COMPANY + "/" + idA);
         var missing = recruiterB.get(COMPANY + "/" + UUID.randomUUID());
         assertThat(foreign.statusCode()).isEqualTo(403);
@@ -256,7 +254,7 @@ class OfferIntegrationTest {
         create(admin, "Con requisito", List.of(requirement));
         var catalog = visitor.get("/catalog/courses/" + requirement);
         assertThat(catalog.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(catalog.body()).path("id").asText()).isEqualTo(requirement.toString());
+        assertThat(json.readTree(catalog.body()).path("id").asString()).isEqualTo(requirement.toString());
         assertThat(catalog.body()).doesNotContain("oferta", "postulacion", "creadoPor");
         jdbc.update("UPDATE membresia SET rol = 'EDITOR' WHERE usuario_id = ?", admin.id);
         assertThat(admin.get(COMPANY).statusCode()).isEqualTo(403);
@@ -301,7 +299,7 @@ class OfferIntegrationTest {
     private UUID create(Browser client, String title, List<UUID> requirements) throws Exception {
         var response = client.send("POST", COMPANY, data(title, requirements));
         assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private String data(String title, List<UUID> requirements) throws Exception {
@@ -334,7 +332,7 @@ class OfferIntegrationTest {
         private HttpResponse<String> send(String method, String path, String body, String contentType) throws Exception {
             JsonNode token = json.readTree(get("/auth/csrf").body());
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType)
-                .header(token.path("headerName").asText(), token.path("token").asText())
+                .header(token.path("headerName").asString(), token.path("token").asString())
                 .method(method, HttpRequest.BodyPublishers.ofString(body)).build();
             return client.send(request, HttpResponse.BodyHandlers.ofString());
         }

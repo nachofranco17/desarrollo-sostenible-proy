@@ -1,11 +1,11 @@
 package uy.edu.um.xperience;
 
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 import java.net.*;
 import java.net.http.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +33,7 @@ class Rs11InstanceAuthorizationTest {
     private static final String COURSES = "/company/courses";
     @LocalServerPort int port;
     @Autowired ObjectMapper json;
+    private static final TypeReference<Map<String, Object>> JSON_OBJECT = new TypeReference<>() {};
     @Autowired AccountRepository accounts;
     @Autowired CompanyProvisioner provisioner;
     @Autowired PasswordEncoder passwords;
@@ -57,7 +58,7 @@ class Rs11InstanceAuthorizationTest {
         assertThat(talentA.patch("/profile/me", json.writeValueAsString(attack), true).statusCode()).isEqualTo(400);
 
         JsonNode profileB = json.readTree(talentB.get("/profile/me").body());
-        assertThat(profileB.path("nombre").asText()).isEqualTo("Ana");
+        assertThat(profileB.path("nombre").asString()).isEqualTo("Ana");
         assertThat(accounts.byEmail(talentB.email).orElseThrow().nombre()).isEqualTo("Ana");
     }
 
@@ -66,12 +67,12 @@ class Rs11InstanceAuthorizationTest {
         var talent = registerTalent();
         var response = talent.get("/profile/me");
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(response.body()).path("correo").asText()).isEqualTo(talent.email);
+        assertThat(json.readTree(response.body()).path("correo").asString()).isEqualTo(talent.email);
 
         ObjectNode update = profilePayload(talent.email);
         update.put("nombre", "Propio");
         assertThat(talent.patch("/profile/me", json.writeValueAsString(update), true).statusCode()).isEqualTo(200);
-        assertThat(json.readTree(talent.get("/profile/me").body()).path("nombre").asText()).isEqualTo("Propio");
+        assertThat(json.readTree(talent.get("/profile/me").body()).path("nombre").asString()).isEqualTo("Propio");
     }
 
     @Test
@@ -96,7 +97,7 @@ class Rs11InstanceAuthorizationTest {
         var editorB = member(companyB, "EDITOR");
 
         UUID projectId = create(editorA, "PROYECTO", "Proyecto A");
-        String deliverableId = addDeliverable(editorA, projectId).path("entregables").get(0).path("id").asText();
+        String deliverableId = addDeliverable(editorA, projectId).path("entregables").get(0).path("id").asString();
 
         var foreignCourse = editorB.get(COURSES + "/" + projectId);
         var missingCourse = editorB.get(COURSES + "/" + UUID.randomUUID());
@@ -117,7 +118,7 @@ class Rs11InstanceAuthorizationTest {
         var editor = member(company, "EDITOR");
         UUID projectA = create(editor, "PROYECTO", "Proyecto con entregable");
         UUID projectB = create(editor, "PROYECTO", "Otro proyecto");
-        String deliverableA = addDeliverable(editor, projectA).path("entregables").get(0).path("id").asText();
+        String deliverableA = addDeliverable(editor, projectA).path("entregables").get(0).path("id").asString();
 
         // Acceso legítimo al proyecto A (contraprueba del camino indirecto).
         assertThat(editor.get(COURSES + "/" + projectA).statusCode()).isEqualTo(200);
@@ -198,7 +199,7 @@ class Rs11InstanceAuthorizationTest {
     private UUID create(Browser client, String type, String title) throws Exception {
         var response = client.send("POST", COURSES, course(type, title));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private JsonNode addDeliverable(Browser client, UUID projectId) throws Exception {
@@ -208,7 +209,7 @@ class Rs11InstanceAuthorizationTest {
     }
 
     private String course(String type, String title) throws Exception {
-        var body = new HashMap<String, Object>(json.readValue(data(title), Map.class));
+        var body = new HashMap<String, Object>(json.readValue(data(title), JSON_OBJECT));
         body.put("tipo", type);
         return json.writeValueAsString(body);
     }
@@ -288,7 +289,7 @@ class Rs11InstanceAuthorizationTest {
                 .method(method, HttpRequest.BodyPublishers.ofString(body == null ? "" : body));
             if (csrf) {
                 var token = json.readTree(get("/auth/csrf").body());
-                builder.header(token.path("headerName").asText(), token.path("token").asText());
+                builder.header(token.path("headerName").asString(), token.path("token").asString());
             }
             return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         }

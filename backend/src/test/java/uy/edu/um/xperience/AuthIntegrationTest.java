@@ -57,7 +57,7 @@ class AuthIntegrationTest {
         assertThat(login.headers().allValues("set-cookie").toString()).contains("HttpOnly", "SameSite=Lax");
         var profile = client.get("/account");
         assertThat(profile.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(profile.body()).path("rol").asText()).isEqualTo("TALENTO");
+        assertThat(json.readTree(profile.body()).path("rol").asString()).isEqualTo("TALENTO");
         assertThat(profile.body()).doesNotContain("password", "hash");
         assertThat(profile.headers().firstValue("cache-control").orElse("")).contains("no-store");
         assertThat(replay(oldCookie).statusCode()).isEqualTo(401);
@@ -196,8 +196,8 @@ class AuthIntegrationTest {
         assertThat(client.login(email, PASSWORD).statusCode()).isEqualTo(204);
         var profile = client.get("/account");
         assertThat(profile.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(profile.body()).path("empresaId").asText()).isEqualTo(company.toString());
-        assertThat(json.readTree(profile.body()).path("rol").asText()).isEqualTo("ADMIN");
+        assertThat(json.readTree(profile.body()).path("empresaId").asString()).isEqualTo(company.toString());
+        assertThat(json.readTree(profile.body()).path("rol").asString()).isEqualTo("ADMIN");
         assertThat(client.post("/auth/logout", "", "application/json", true).statusCode()).isEqualTo(204);
         assertThat(client.get("/account").statusCode()).isEqualTo(401);
     }
@@ -212,7 +212,7 @@ class AuthIntegrationTest {
         jdbc.update("UPDATE membresia SET rol = ? WHERE usuario_id = ?", role, id);
         var client = new Browser();
         assertThat(client.login(email, PASSWORD).statusCode()).isEqualTo(204);
-        assertThat(json.readTree(client.get("/account").body()).path("rol").asText()).isEqualTo(role);
+        assertThat(json.readTree(client.get("/account").body()).path("rol").asString()).isEqualTo(role);
         jdbc.update("UPDATE membresia SET estado = 'BAJA' WHERE usuario_id = ?", id);
         assertThat(client.get("/account").statusCode()).isEqualTo(403);
         assertThat(client.get("/account").statusCode()).isEqualTo(401);
@@ -284,7 +284,7 @@ class AuthIntegrationTest {
         String sessionBefore = staff.sessionCookie();
         var account = staff.get("/account");
         assertThat(account.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(account.body()).path("rol").asText()).isEqualTo("RECLUTADOR");
+        assertThat(json.readTree(account.body()).path("rol").asString()).isEqualTo("RECLUTADOR");
         assertThat(staff.sessionCookie()).isEqualTo(sessionBefore);
         for (String action : List.of("oferta.gestionar", "postulacion.ver_listado")) {
             assertThat(authorization.allowed(member.id(), action, ResourceAccess.company(e1.companyId()))).as(action + " E1").isTrue();
@@ -301,7 +301,7 @@ class AuthIntegrationTest {
         assertThat(admin.patch("/staff/" + member.id() + "/rol", "{\"rol\":\"EDITOR\"}", true).statusCode()).isEqualTo(204);
         assertThat(authorization.allowed(member.id(), "oferta.gestionar", ResourceAccess.company(e1.companyId()))).isFalse();
         assertThat(authorization.allowed(member.id(), "curso.gestionar", ResourceAccess.company(e1.companyId()))).isTrue();
-        assertThat(json.readTree(staff.get("/account").body()).path("rol").asText()).isEqualTo("EDITOR");
+        assertThat(json.readTree(staff.get("/account").body()).path("rol").asString()).isEqualTo("EDITOR");
         assertThat(staff.sessionCookie()).isEqualTo(sessionBefore);
         jdbc.update("UPDATE membresia SET rol = NULL WHERE usuario_id = ?", member.id());
         assertThat(authorization.allowed(member.id(), "curso.gestionar", ResourceAccess.company(e1.companyId()))).isFalse();
@@ -528,7 +528,7 @@ class AuthIntegrationTest {
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType);
             if (csrf) {
                 var token = json.readTree(get("/auth/csrf").body());
-                request.header(token.path("headerName").asText(), token.path("token").asText());
+                request.header(token.path("headerName").asString(), token.path("token").asString());
             }
             return client.send(request.method(method, HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
         }

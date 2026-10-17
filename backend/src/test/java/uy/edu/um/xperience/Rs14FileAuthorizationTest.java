@@ -219,7 +219,7 @@ class Rs14FileAuthorizationTest {
         assertThat(editorA.send("POST", COURSES + "/" + course + "/lessons",
             json.writeValueAsString(Map.of("titulo", "L1", "cuerpo", "Cuerpo"))).statusCode()).isEqualTo(200);
         UUID material = UUID.fromString(json.readTree(editorA.upload(COURSES + "/" + course + "/materials", "guia.pdf",
-            "application/pdf", materialBytes)).path("materiales").get(0).path("id").asText());
+            "application/pdf", materialBytes)).path("materiales").get(0).path("id").asString());
         assertThat(editorA.send("POST", COURSES + "/" + course + "/publish", "").statusCode()).isEqualTo(200);
 
         var enrolled = registerTalent();
@@ -229,7 +229,7 @@ class Rs14FileAuthorizationTest {
 
         var created = adminA.send("POST", OFFERS, json.writeValueAsString(
             Map.of("titulo", "Oferta RS14", "descripcion", "Desc", "cursosRequeridos", List.of())));
-        UUID offer = UUID.fromString(json.readTree(created.body()).path("id").asText());
+        UUID offer = UUID.fromString(json.readTree(created.body()).path("id").asString());
         assertThat(adminA.send("POST", OFFERS + "/" + offer + "/publish", "").statusCode()).isEqualTo(200);
 
         byte[] cvBytes = ("%PDF-1.4\nCV RS14 " + UUID.randomUUID() + "\n%%EOF\n").getBytes(StandardCharsets.US_ASCII);
@@ -237,7 +237,7 @@ class Rs14FileAuthorizationTest {
         applicant.upload("/profile/me/curriculum", "cv.pdf", "application/pdf", cvBytes);
         var applied = applicant.send("POST", "/offers/" + offer + "/applications", "{}");
         assertThat(applied.statusCode()).isEqualTo(201);
-        UUID application = UUID.fromString(json.readTree(applied.body()).path("id").asText());
+        UUID application = UUID.fromString(json.readTree(applied.body()).path("id").asString());
 
         return new Fixture(course, material, materialBytes, offer, application, cvBytes, adminA, editorA, recruiterA,
             adminB, editorB, applicant, enrolled, stranger);
@@ -254,7 +254,7 @@ class Rs14FileAuthorizationTest {
         body.put("costo", 0);
         var response = editor.send("POST", COURSES, json.writeValueAsString(body));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private Browser registerTalent() throws Exception {
@@ -348,7 +348,7 @@ class Rs14FileAuthorizationTest {
                 throws Exception {
             var token = json.readTree(get("/auth/csrf").body());
             var request = HttpRequest.newBuilder(api(path)).header("Content-Type", contentType)
-                .header(token.path("headerName").asText(), token.path("token").asText())
+                .header(token.path("headerName").asString(), token.path("token").asString())
                 .method(method, body).build();
             return client.send(request, HttpResponse.BodyHandlers.ofString());
         }

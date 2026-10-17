@@ -46,8 +46,8 @@ class Rs13IdentifierNotAccessKeyTest {
 
         var response = talent.get(ENROLLMENTS + "/" + enrollmentId);
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(response.body()).path("id").asText()).isEqualTo(enrollmentId.toString());
-        assertThat(json.readTree(response.body()).path("cursoId").asText()).isEqualTo(courseId.toString());
+        assertThat(json.readTree(response.body()).path("id").asString()).isEqualTo(enrollmentId.toString());
+        assertThat(json.readTree(response.body()).path("cursoId").asString()).isEqualTo(courseId.toString());
     }
 
     @Test
@@ -67,7 +67,7 @@ class Rs13IdentifierNotAccessKeyTest {
         assertThat(jdbc.queryForObject(
             "SELECT porcentaje_avance FROM inscripcion WHERE id = ?", Integer.class, enrollmentB)).isEqualTo(0);
         assertThat(json.readTree(talentA.get(ENROLLMENTS + "/me").body()).path("items"))
-            .noneMatch(n -> enrollmentB.toString().equals(n.path("id").asText()));
+            .noneMatch(n -> enrollmentB.toString().equals(n.path("id").asString()));
     }
 
     @Test
@@ -118,12 +118,12 @@ class Rs13IdentifierNotAccessKeyTest {
 
         var profile = talent.get("/profile/me");
         assertThat(profile.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(profile.body()).path("correo").asText()).isEqualTo(talent.email);
+        assertThat(json.readTree(profile.body()).path("correo").asString()).isEqualTo(talent.email);
 
         var list = talent.get(ENROLLMENTS + "/me");
         assertThat(list.statusCode()).isEqualTo(200);
         assertThat(json.readTree(list.body()).path("items"))
-            .anyMatch(n -> enrollmentId.toString().equals(n.path("id").asText()));
+            .anyMatch(n -> enrollmentId.toString().equals(n.path("id").asString()));
 
         assertThat(talent.get("/profile/" + talent.id).statusCode()).isEqualTo(403);
     }
@@ -144,7 +144,7 @@ class Rs13IdentifierNotAccessKeyTest {
 
         var clean = talentA.send("POST", ENROLLMENTS, json.writeValueAsString(Map.of("cursoId", courseId.toString())));
         assertThat(clean.statusCode()).isEqualTo(201);
-        UUID enrollmentId = UUID.fromString(json.readTree(clean.body()).path("id").asText());
+        UUID enrollmentId = UUID.fromString(json.readTree(clean.body()).path("id").asString());
         assertThat(jdbc.queryForObject(
             "SELECT talento_id FROM inscripcion WHERE id = ?", UUID.class, enrollmentId)).isEqualTo(talentA.id);
 
@@ -154,7 +154,7 @@ class Rs13IdentifierNotAccessKeyTest {
         profileAttack.put("usuarioId", talentB.id.toString());
         assertThat(talentA.patch("/profile/me", json.writeValueAsString(profileAttack), true).statusCode())
             .isEqualTo(400);
-        assertThat(json.readTree(talentB.get("/profile/me").body()).path("nombre").asText()).isEqualTo("Ana");
+        assertThat(json.readTree(talentB.get("/profile/me").body()).path("nombre").asString()).isEqualTo("Ana");
     }
 
     @Test
@@ -163,7 +163,7 @@ class Rs13IdentifierNotAccessKeyTest {
         var editor = member(companyId, "EDITOR");
         UUID projectA = createCourse(editor, "PROYECTO", "Proyecto A RS13");
         UUID projectB = createCourse(editor, "PROYECTO", "Proyecto B RS13");
-        String deliverableA = addDeliverable(editor, projectA).path("entregables").get(0).path("id").asText();
+        String deliverableA = addDeliverable(editor, projectA).path("entregables").get(0).path("id").asString();
 
         var nested = editor.send("PUT", COURSES + "/" + projectB + "/deliverables/" + deliverableA,
             deliverableBody());
@@ -250,7 +250,7 @@ class Rs13IdentifierNotAccessKeyTest {
         body.put("costo", 0);
         var response = client.send("POST", COURSES, json.writeValueAsString(body));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private JsonNode addDeliverable(Browser client, UUID projectId) throws Exception {
@@ -268,7 +268,7 @@ class Rs13IdentifierNotAccessKeyTest {
         var created = admin.send("POST", OFFERS, json.writeValueAsString(Map.of(
             "titulo", title, "descripcion", "Desc", "cursosRequeridos", List.of())));
         assertThat(created.statusCode()).isEqualTo(201);
-        UUID id = UUID.fromString(json.readTree(created.body()).path("id").asText());
+        UUID id = UUID.fromString(json.readTree(created.body()).path("id").asString());
         assertThat(admin.send("POST", OFFERS + "/" + id + "/publish", "").statusCode()).isEqualTo(200);
         return id;
     }
@@ -284,7 +284,7 @@ class Rs13IdentifierNotAccessKeyTest {
         var token = json.readTree(talent.get("/auth/csrf").body());
         var request = HttpRequest.newBuilder(uri("/profile/me/curriculum"))
             .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-            .header(token.path("headerName").asText(), token.path("token").asText())
+            .header(token.path("headerName").asString(), token.path("token").asString())
             .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
         assertThat(talent.client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode()).isEqualTo(201);
     }
@@ -292,13 +292,13 @@ class Rs13IdentifierNotAccessKeyTest {
     private UUID apply(Browser talent, UUID offerId) throws Exception {
         var response = talent.send("POST", "/offers/" + offerId + "/applications", "{}");
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private UUID enroll(Browser talent, UUID courseId) throws Exception {
         var response = talent.send("POST", ENROLLMENTS, json.writeValueAsString(Map.of("cursoId", courseId.toString())));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private ObjectNode profilePayload(String email) {
@@ -364,7 +364,7 @@ class Rs13IdentifierNotAccessKeyTest {
                 .method(method, HttpRequest.BodyPublishers.ofString(body == null ? "" : body));
             if (csrf) {
                 var token = json.readTree(get("/auth/csrf").body());
-                builder.header(token.path("headerName").asText(), token.path("token").asText());
+                builder.header(token.path("headerName").asString(), token.path("token").asString());
             }
             return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         }

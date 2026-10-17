@@ -70,10 +70,10 @@ public final class ProfileUpdateParser {
         if (node.isNull()) {
             throw new ProfileValidationException("El campo " + field + " no puede ser null.");
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new ProfileValidationException("El campo " + field + " debe ser texto.");
         }
-        String value = node.asText().strip();
+        String value = node.asString().strip();
         if (value.isEmpty()) {
             throw new ProfileValidationException("El campo " + field + " es obligatorio.");
         }
@@ -96,10 +96,10 @@ public final class ProfileUpdateParser {
         if (node.isNull()) {
             throw new ProfileValidationException("El correo no puede ser null.");
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new ProfileValidationException("El correo debe ser texto.");
         }
-        String value = RegisterRequest.normalizeEmail(node.asText());
+        String value = RegisterRequest.normalizeEmail(node.asString());
         if (value == null || value.isEmpty() || value.length() > EMAIL_MAX || !EMAIL_PATTERN.matcher(value).matches()) {
             throw new ProfileValidationException("El correo tiene un formato inválido.");
         }
@@ -114,10 +114,10 @@ public final class ProfileUpdateParser {
         if (node.isNull()) {
             return FieldChange.clear();
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new ProfileValidationException("El teléfono debe ser texto.");
         }
-        String value = node.asText().strip();
+        String value = node.asString().strip();
         if (value.isEmpty()) {
             return FieldChange.clear();
         }
@@ -150,10 +150,10 @@ public final class ProfileUpdateParser {
         }
         List<String> values = new ArrayList<>();
         for (JsonNode item : node) {
-            if (!item.isTextual()) {
+            if (!item.isString()) {
                 throw new ProfileValidationException("Cada especialización debe ser texto.");
             }
-            String value = item.asText().strip();
+            String value = item.asString().strip();
             if (value.isEmpty()) {
                 throw new ProfileValidationException("Las especializaciones no pueden estar vacías.");
             }

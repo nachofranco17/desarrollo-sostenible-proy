@@ -1,5 +1,6 @@
 package uy.edu.um.xperience;
 
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
@@ -32,6 +33,7 @@ class CourseIntegrationTest {
     private static final byte[] PDF = "%PDF-1.4\n% prueba\n".getBytes(StandardCharsets.US_ASCII);
     @LocalServerPort int port;
     @Autowired ObjectMapper json;
+    private static final TypeReference<Map<String, Object>> JSON_OBJECT = new TypeReference<>() {};
     @Autowired AccountRepository accounts;
     @Autowired CompanyProvisioner provisioner;
     @Autowired PasswordEncoder passwords;
@@ -46,15 +48,15 @@ class CourseIntegrationTest {
         var created = editor.send("POST", BASE, course("CURSO", "Java desde cero"));
         assertThat(created.statusCode()).isEqualTo(201);
         JsonNode body = json.readTree(created.body());
-        assertThat(body.path("estado").asText()).isEqualTo("BORRADOR");
-        assertThat(body.path("tipo").asText()).isEqualTo("CURSO");
-        UUID id = UUID.fromString(body.path("id").asText());
+        assertThat(body.path("estado").asString()).isEqualTo("BORRADOR");
+        assertThat(body.path("tipo").asString()).isEqualTo("CURSO");
+        UUID id = UUID.fromString(body.path("id").asString());
         assertThat(jdbc.queryForObject("SELECT empresa_id FROM curso WHERE id = ?", UUID.class, id)).isEqualTo(company);
         assertThat(created.body()).doesNotContain("empresa", "creado_por", "creadoPor");
 
         JsonNode list = json.readTree(editor.get(BASE).body());
         assertThat(list).hasSize(1);
-        assertThat(list.get(0).path("titulo").asText()).isEqualTo("Java desde cero");
+        assertThat(list.get(0).path("titulo").asString()).isEqualTo("Java desde cero");
     }
 
     @Test
@@ -64,7 +66,7 @@ class CourseIntegrationTest {
         addLesson(admin, id);
         var published = admin.send("POST", BASE + "/" + id + "/publish", "");
         assertThat(published.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(published.body()).path("estado").asText()).isEqualTo("PUBLICADO");
+        assertThat(json.readTree(published.body()).path("estado").asString()).isEqualTo("PUBLICADO");
     }
 
     @Test
@@ -73,7 +75,7 @@ class CourseIntegrationTest {
         UUID id = create(editor, "CURSO", "Docker");
         assertThat(editor.send("POST", BASE + "/" + id + "/publish", "").statusCode()).isEqualTo(409);
 
-        String lesson = addLesson(editor, id).path("lecciones").get(0).path("id").asText();
+        String lesson = addLesson(editor, id).path("lecciones").get(0).path("id").asString();
         assertThat(editor.send("POST", BASE + "/" + id + "/publish", "").statusCode()).isEqualTo(200);
         // Publicado: puede haber inscriptos, así que no se borra ni se le quitan lecciones.
         assertThat(editor.send("DELETE", BASE + "/" + id, "").statusCode()).isEqualTo(409);
@@ -81,7 +83,7 @@ class CourseIntegrationTest {
         assertThat(editor.send("PUT", BASE + "/" + id, data("Editado en publicado")).statusCode()).isEqualTo(200);
 
         var down = editor.send("POST", BASE + "/" + id + "/unpublish", "");
-        assertThat(json.readTree(down.body()).path("estado").asText()).isEqualTo("BAJADO");
+        assertThat(json.readTree(down.body()).path("estado").asString()).isEqualTo("BAJADO");
         assertThat(editor.send("PUT", BASE + "/" + id, data("Otro")).statusCode()).isEqualTo(409);
         assertThat(editor.send("POST", BASE + "/" + id + "/lessons", lessonBody()).statusCode()).isEqualTo(409);
         assertThat(editor.send("POST", BASE + "/" + id + "/publish", "").statusCode()).isEqualTo(200);
@@ -105,7 +107,7 @@ class CourseIntegrationTest {
         UUID id = create(editor, "CURSO", "Numeración");
         addLesson(editor, id);
         addLesson(editor, id);
-        String first = addLesson(editor, id).path("lecciones").get(0).path("id").asText();
+        String first = addLesson(editor, id).path("lecciones").get(0).path("id").asString();
         var response = editor.send("DELETE", BASE + "/" + id + "/lessons/" + first, "");
         JsonNode lessons = json.readTree(response.body()).path("lecciones");
         assertThat(lessons).hasSize(2);
@@ -132,7 +134,7 @@ class CourseIntegrationTest {
         // Normalizadas son la misma respuesta: se guarda una.
         assertThat(json.readTree(created.body()).path("entregables").get(0).path("cantidadRespuestasAceptadas").asInt())
             .isEqualTo(1);
-        String deliverableId = json.readTree(created.body()).path("entregables").get(0).path("id").asText();
+        String deliverableId = json.readTree(created.body()).path("entregables").get(0).path("id").asString();
         String hash = jdbc.queryForObject("SELECT hash FROM respuesta_aceptada WHERE entregable_id = ?",
             String.class, UUID.fromString(deliverableId));
         assertThat(passwords.matches(AnswerNormalizer.normalize("RESPUESTA secreta 42"), hash)).isTrue();
@@ -154,11 +156,11 @@ class CourseIntegrationTest {
         var upload = editor.upload(BASE + "/" + id + "/materials", "../../guia.pdf", PDF);
         assertThat(upload.statusCode()).isEqualTo(200);
         JsonNode material = json.readTree(upload.body()).path("materiales").get(0);
-        assertThat(material.path("nombre").asText()).isEqualTo("guia.pdf");
-        assertThat(material.path("tipoMime").asText()).isEqualTo("application/pdf");
+        assertThat(material.path("nombre").asString()).isEqualTo("guia.pdf");
+        assertThat(material.path("tipoMime").asString()).isEqualTo("application/pdf");
         assertThat(upload.body()).doesNotContain("clave", "almacen");
 
-        var download = editor.getBytes(BASE + "/" + id + "/materials/" + material.path("id").asText());
+        var download = editor.getBytes(BASE + "/" + id + "/materials/" + material.path("id").asString());
         assertThat(download.statusCode()).isEqualTo(200);
         assertThat(download.headers().firstValue("Content-Disposition").orElse("")).startsWith("attachment");
         assertThat(download.headers().firstValue("X-Content-Type-Options")).contains("nosniff");
@@ -193,7 +195,7 @@ class CourseIntegrationTest {
         UUID otherCompany = company();
         var editor = member(company, "EDITOR");
         UUID id = create(editor, "CURSO", "Original");
-        var attempt = new HashMap<String, Object>(json.readValue(data("Cambiado"), Map.class));
+        var attempt = new HashMap<String, Object>(json.readValue(data("Cambiado"), JSON_OBJECT));
         attempt.put("estado", "PUBLICADO");
         assertThat(editor.send("PUT", BASE + "/" + id, json.writeValueAsString(attempt)).statusCode()).isEqualTo(400);
         assertThat(jdbc.queryForMap("SELECT titulo, estado FROM curso WHERE id = ?", id))
@@ -205,7 +207,7 @@ class CourseIntegrationTest {
         assertThat(jdbc.queryForMap("SELECT titulo, empresa_id FROM curso WHERE id = ?", id))
             .containsEntry("titulo", "Original").containsEntry("empresa_id", company);
 
-        var other = new HashMap<String, Object>(json.readValue(course("CURSO", "Plantado"), Map.class));
+        var other = new HashMap<String, Object>(json.readValue(course("CURSO", "Plantado"), JSON_OBJECT));
         other.put("empresaId", otherCompany.toString());
         assertThat(editor.send("POST", BASE, json.writeValueAsString(other)).statusCode()).isEqualTo(400);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM curso WHERE empresa_id = ?", Integer.class, company)).isEqualTo(1);
@@ -217,7 +219,7 @@ class CourseIntegrationTest {
         UUID companyA = company();
         var editorA = member(companyA, "EDITOR");
         UUID id = create(editorA, "CURSO", "De la empresa A");
-        String lesson = addLesson(editorA, id).path("lecciones").get(0).path("id").asText();
+        String lesson = addLesson(editorA, id).path("lecciones").get(0).path("id").asString();
         var editorB = member(company(), "EDITOR");
         UUID ownId = create(editorB, "CURSO", "De la empresa B");
 
@@ -226,7 +228,7 @@ class CourseIntegrationTest {
             assertThat(response.statusCode()).isEqualTo(200);
             JsonNode list = json.readTree(response.body());
             assertThat(list).hasSize(1);
-            assertThat(list.get(0).path("id").asText()).isEqualTo(ownId.toString());
+            assertThat(list.get(0).path("id").asString()).isEqualTo(ownId.toString());
         }
         var foreign = editorB.get(BASE + "/" + id);
         var missing = editorB.get(BASE + "/" + UUID.randomUUID());
@@ -251,11 +253,11 @@ class CourseIntegrationTest {
         assertThat(client.send("POST", "/auth/login", HttpRequest.BodyPublishers.ofString(forgedLogin),
             "application/json").statusCode()).isEqualTo(401);
         assertThat(client.login(email).statusCode()).isEqualTo(204);
-        assertThat(json.readTree(client.get("/account").body()).path("empresaId").asText()).isEqualTo(company.toString());
+        assertThat(json.readTree(client.get("/account").body()).path("empresaId").asString()).isEqualTo(company.toString());
 
         var created = client.send("POST", BASE + "?empresaId=" + otherCompany, course("CURSO", "De la sesión"));
         assertThat(created.statusCode()).isEqualTo(201);
-        UUID id = UUID.fromString(json.readTree(created.body()).path("id").asText());
+        UUID id = UUID.fromString(json.readTree(created.body()).path("id").asString());
         assertThat(jdbc.queryForMap("SELECT empresa_id, creado_por FROM curso WHERE id = ?", id))
             .containsEntry("empresa_id", company).containsEntry("creado_por", editor.id);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM curso WHERE empresa_id = ?", Integer.class, otherCompany)).isZero();
@@ -276,9 +278,9 @@ class CourseIntegrationTest {
         UUID company = company();
         var editor = member(company, "EDITOR");
         UUID id = create(editor, "CURSO", "Existente");
-        String lesson = addLesson(editor, id).path("lecciones").get(0).path("id").asText();
+        String lesson = addLesson(editor, id).path("lecciones").get(0).path("id").asString();
         String material = json.readTree(editor.upload(BASE + "/" + id + "/materials", "a.pdf", PDF).body())
-            .path("materiales").get(0).path("id").asText();
+            .path("materiales").get(0).path("id").asString();
         var intruder = "TALENTO".equals(role) ? talent() : member(company, role);
         long files = storedFiles();
 
@@ -323,7 +325,7 @@ class CourseIntegrationTest {
         byte[] pdf = "%PDF-1.4\nMaterial privado\n%%EOF".getBytes(StandardCharsets.US_ASCII);
         var uploaded = editor.upload(BASE + "/" + courseId + "/materials", "material.pdf", pdf);
         assertThat(uploaded.statusCode()).isEqualTo(200);
-        String materialId = json.readTree(uploaded.body()).path("materiales").get(0).path("id").asText();
+        String materialId = json.readTree(uploaded.body()).path("materiales").get(0).path("id").asString();
         String download = BASE + "/" + courseId + "/materials/" + materialId;
         assertThat(editor.send("POST", BASE + "/" + courseId + "/publish", "{}").statusCode()).isEqualTo(200);
         var enrolled = talent(); var stranger = talent();
@@ -381,7 +383,7 @@ class CourseIntegrationTest {
     private UUID create(Browser client, String type, String title) throws Exception {
         var response = client.send("POST", BASE, course(type, title));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private JsonNode addLesson(Browser client, UUID id) throws Exception {
@@ -391,7 +393,7 @@ class CourseIntegrationTest {
     }
 
     private String course(String type, String title) throws Exception {
-        var body = new HashMap<String, Object>(json.readValue(data(title), Map.class));
+        var body = new HashMap<String, Object>(json.readValue(data(title), JSON_OBJECT));
         body.put("tipo", type);
         return json.writeValueAsString(body);
     }
@@ -458,7 +460,7 @@ class CourseIntegrationTest {
                                           String contentType) throws Exception {
             var token = json.readTree(get("/auth/csrf").body());
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType)
-                .header(token.path("headerName").asText(), token.path("token").asText())
+                .header(token.path("headerName").asString(), token.path("token").asString())
                 .method(method, body).build();
             return client.send(request, HttpResponse.BodyHandlers.ofString());
         }

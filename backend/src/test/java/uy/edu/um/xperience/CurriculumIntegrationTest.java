@@ -11,7 +11,6 @@ import java.io.ByteArrayOutputStream;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -60,13 +59,13 @@ class CurriculumIntegrationTest {
         var response = talent.upload(BASE, "../../curriculum.pdf", PDF, true);
         assertThat(response.statusCode()).isEqualTo(201);
         JsonNode body = json.readTree(response.body());
-        assertThat(body.path("nombreOriginal").asText()).isEqualTo("curriculum.pdf");
-        assertThat(body.path("tipoMime").asText()).isEqualTo("application/pdf");
+        assertThat(body.path("nombreOriginal").asString()).isEqualTo("curriculum.pdf");
+        assertThat(body.path("tipoMime").asString()).isEqualTo("application/pdf");
         assertThat(body.path("tamanioBytes").asLong()).isEqualTo(PDF.length);
-        assertThat(body.path("creadoEn").asText()).isNotBlank();
+        assertThat(body.path("creadoEn").asString()).isNotBlank();
         assertThat(body.size()).isEqualTo(5);
         assertThat(response.body()).doesNotContain("usuarioId", "claveAlmacen", "almacen", "target", "ruta");
-        UUID id = UUID.fromString(body.path("id").asText());
+        UUID id = UUID.fromString(body.path("id").asString());
         assertThat(curriculums.current(talent.id).orElseThrow().id()).isEqualTo(id);
 
         var download = talent.getBytes(BASE);
@@ -87,7 +86,7 @@ class CurriculumIntegrationTest {
         UUID secondId = uploaded(second, PDF);
         var metadata = first.get(BASE + "/metadata");
         assertThat(metadata.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(metadata.body()).path("id").asText()).isEqualTo(firstId.toString());
+        assertThat(json.readTree(metadata.body()).path("id").asString()).isEqualTo(firstId.toString());
         assertThat(json.readTree(metadata.body()).size()).isEqualTo(5);
         assertThat(metadata.body()).doesNotContain("usuarioId", "claveAlmacen", secondId.toString());
         assertThat(metadata.headers().firstValue("Cache-Control").orElseThrow()).contains("no-store");
@@ -95,7 +94,7 @@ class CurriculumIntegrationTest {
         assertThat(new Browser().get(BASE + "/metadata").statusCode()).isEqualTo(401);
         assertThat(staff("ADMIN").get(BASE + "/metadata").statusCode()).isEqualTo(403);
         UUID nextId = uploaded(first, PDF);
-        assertThat(json.readTree(first.get(BASE + "/metadata").body()).path("id").asText()).isEqualTo(nextId.toString());
+        assertThat(json.readTree(first.get(BASE + "/metadata").body()).path("id").asString()).isEqualTo(nextId.toString());
     }
 
     @Test
@@ -170,10 +169,10 @@ class CurriculumIntegrationTest {
         var talent = talent();
         var response = talent.upload(BASE, "../../CV\u200B?;.exe", PDF, true);
         assertThat(response.statusCode()).isEqualTo(201);
-        assertThat(json.readTree(response.body()).path("nombreOriginal").asText()).isEqualTo("CV.exe.pdf");
+        assertThat(json.readTree(response.body()).path("nombreOriginal").asString()).isEqualTo("CV.exe.pdf");
         var longName = talent.upload(BASE, "a".repeat(400) + ".pdf", PDF, true);
         assertThat(longName.statusCode()).isEqualTo(201);
-        assertThat(json.readTree(longName.body()).path("nombreOriginal").asText()).hasSize(255).endsWith(".pdf");
+        assertThat(json.readTree(longName.body()).path("nombreOriginal").asString()).hasSize(255).endsWith(".pdf");
     }
 
     @ParameterizedTest
@@ -243,9 +242,9 @@ class CurriculumIntegrationTest {
             assertThat(appender.list).hasSize(1);
             String raw = appender.list.get(0).getFormattedMessage();
             JsonNode event = json.readTree(raw);
-            assertThat(event.path("action").asText()).isEqualTo("curriculum.subir");
-            assertThat(event.path("reason").asText()).isEqualTo(Denegaciones.FIELD_ACCESS_DENIED);
-            assertThat(event.path("field").asText()).isEqualTo("curriculumId");
+            assertThat(event.path("action").asString()).isEqualTo("curriculum.subir");
+            assertThat(event.path("reason").asString()).isEqualTo(Denegaciones.FIELD_ACCESS_DENIED);
+            assertThat(event.path("field").asString()).isEqualTo("curriculumId");
             assertThat(raw).doesNotContain(secret, key, PASSWORD, "Curriculum original");
         } finally {
             logger.detachAppender(appender);
@@ -259,7 +258,7 @@ class CurriculumIntegrationTest {
     private UUID uploaded(Browser browser, byte[] content) throws Exception {
         var response = browser.upload(BASE, "cv.pdf", content, true);
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private Browser talent() throws Exception {
@@ -346,7 +345,7 @@ class CurriculumIntegrationTest {
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType);
             if (csrf) {
                 JsonNode token = json.readTree(get("/auth/csrf").body());
-                request.header(token.path("headerName").asText(), token.path("token").asText());
+                request.header(token.path("headerName").asString(), token.path("token").asString());
             }
             return client.send(request.POST(body).build(), HttpResponse.BodyHandlers.ofString());
         }

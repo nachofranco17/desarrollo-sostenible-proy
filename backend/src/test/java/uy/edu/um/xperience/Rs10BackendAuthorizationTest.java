@@ -77,7 +77,7 @@ class Rs10BackendAuthorizationTest {
             .isZero();
         assertThat(members(company)).isEqualTo(members);
         assertThat(accounts.byId(admin.id).orElseThrow().rol()).isEqualTo("ADMIN");
-        assertThat(json.readTree(talent.get("/account").body()).path("rol").asText()).isEqualTo("TALENTO");
+        assertThat(json.readTree(talent.get("/account").body()).path("rol").asString()).isEqualTo("TALENTO");
     }
 
     @Test
@@ -151,7 +151,7 @@ class Rs10BackendAuthorizationTest {
         UUID published = createCourse(admin, "Publicado RS10");
         String lesson = json.readTree(admin.send("POST", COURSES + "/" + published + "/lessons",
             json.writeValueAsString(Map.of("titulo", "L1", "cuerpo", "Cuerpo")), Map.of()).body())
-            .path("lecciones").get(0).path("id").asText();
+            .path("lecciones").get(0).path("id").asString();
         assertThat(admin.send("POST", COURSES + "/" + published + "/publish", "", Map.of()).statusCode()).isEqualTo(200);
         assertThat(admin.send("DELETE", COURSES + "/" + published + "/lessons/" + lesson, null, Map.of()).statusCode())
             .isEqualTo(409);
@@ -174,7 +174,7 @@ class Rs10BackendAuthorizationTest {
 
         // Oferta publicada: la interfaz la muestra solo para lectura.
         var created = admin.send("POST", OFFERS, offerBody("Oferta RS10"), Map.of());
-        UUID offer = UUID.fromString(json.readTree(created.body()).path("id").asText());
+        UUID offer = UUID.fromString(json.readTree(created.body()).path("id").asString());
         assertThat(admin.send("POST", OFFERS + "/" + offer + "/publish", "", Map.of()).statusCode()).isEqualTo(200);
         assertThat(admin.send("PUT", OFFERS + "/" + offer, offerBody("Cambio posterior"), Map.of()).statusCode())
             .isEqualTo(409);
@@ -346,7 +346,7 @@ class Rs10BackendAuthorizationTest {
     private UUID createCourse(Browser client, String title) throws Exception {
         var response = client.send("POST", COURSES, courseBody(title), Map.of());
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private String courseBody(String title) throws Exception {
@@ -422,7 +422,7 @@ class Rs10BackendAuthorizationTest {
         private void csrf(HttpRequest.Builder builder) throws Exception {
             var token = json.readTree(client.send(HttpRequest.newBuilder(uri("/auth/csrf")).GET().build(),
                 HttpResponse.BodyHandlers.ofString()).body());
-            builder.header(token.path("headerName").asText(), token.path("token").asText());
+            builder.header(token.path("headerName").asString(), token.path("token").asString());
         }
     }
 }

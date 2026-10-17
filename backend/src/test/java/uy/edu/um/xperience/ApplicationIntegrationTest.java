@@ -45,9 +45,9 @@ class ApplicationIntegrationTest {
         UUID talent = talent("Ana", List.of("Backend", "React"));
         UUID original = upload(talent, ORIGINAL);
         JsonNode application = apply(talent, offer);
-        UUID id = UUID.fromString(application.path("id").asText());
+        UUID id = UUID.fromString(application.path("id").asString());
         assertThat(application.size()).isEqualTo(6);
-        assertThat(application.path("estado").asText()).isEqualTo("ENVIADA");
+        assertThat(application.path("estado").asString()).isEqualTo("ENVIADA");
         assertThat(jdbc.queryForObject("SELECT curriculum_id FROM postulacion WHERE id = ?", UUID.class, id))
             .isEqualTo(original);
         assertThat(jdbc.queryForObject("SELECT empresa_id FROM postulacion WHERE id = ?", UUID.class, id))
@@ -138,7 +138,7 @@ class ApplicationIntegrationTest {
     @Test void companyAndNestedScopeDenyUnknownAndForeignResourcesIdentically() throws Exception {
         Company a = company(); Company b = company(); UUID offer = offer(a, true); UUID otherOwnOffer = offer(a, true);
         UUID talent = talent("Fernanda", List.of("Backend")); upload(talent, ORIGINAL);
-        UUID application = UUID.fromString(apply(talent, offer).path("id").asText());
+        UUID application = UUID.fromString(apply(talent, offer).path("id").asString());
         for (String suffix : List.of("profile", "curriculum")) {
             MvcResult foreign = getAs(b.admin(), nested(offer, application, suffix));
             MvcResult unknown = getAs(b.admin(), nested(UUID.randomUUID(), UUID.randomUUID(), suffix));
@@ -156,10 +156,10 @@ class ApplicationIntegrationTest {
         Company company = company(); UUID offer = offer(company, true);
         UUID first = talent("Gabriela", List.of()); UUID second = talent("Hector", List.of());
         upload(first, ORIGINAL); upload(second, ORIGINAL);
-        UUID firstId = UUID.fromString(apply(first, offer).path("id").asText());
-        UUID secondId = UUID.fromString(apply(second, offer).path("id").asText());
-        assertThat(tree(getAs(first, "/api/applications/me")).get(0).path("id").asText()).isEqualTo(firstId.toString());
-        assertThat(tree(getAs(second, "/api/applications/me")).get(0).path("id").asText()).isEqualTo(secondId.toString());
+        UUID firstId = UUID.fromString(apply(first, offer).path("id").asString());
+        UUID secondId = UUID.fromString(apply(second, offer).path("id").asString());
+        assertThat(tree(getAs(first, "/api/applications/me")).get(0).path("id").asString()).isEqualTo(firstId.toString());
+        assertThat(tree(getAs(second, "/api/applications/me")).get(0).path("id").asString()).isEqualTo(secondId.toString());
         assertThat(getAs(first, "/api/applications/me?talentoId=" + second).getResponse().getStatus()).isEqualTo(400);
         assertThat(getAs(first, listing(offer)).getResponse().getStatus()).isEqualTo(403);
         assertThat(mvc.perform(get("/api/applications/me")).andReturn().getResponse().getStatus()).isEqualTo(401);
@@ -221,7 +221,7 @@ class ApplicationIntegrationTest {
         var created = send(company.admin(), "POST", "/api/company/offers",
             "{\"titulo\":\"Oferta RF6\",\"descripcion\":\"Descripción válida\",\"cursosRequeridos\":[]}");
         assertThat(created.getResponse().getStatus()).isEqualTo(201);
-        UUID id = UUID.fromString(tree(created).path("id").asText());
+        UUID id = UUID.fromString(tree(created).path("id").asString());
         if (published) assertThat(send(company.admin(), "POST", "/api/company/offers/" + id + "/publish", "{}")
             .getResponse().getStatus()).isEqualTo(200);
         return id;
@@ -231,7 +231,7 @@ class ApplicationIntegrationTest {
             .file(new MockMultipartFile("archivo", "curriculum.pdf", "application/pdf", content))
             .with(user(talent.toString())).with(csrf().asHeader())).andReturn();
         assertThat(uploaded.getResponse().getStatus()).isEqualTo(201);
-        return UUID.fromString(tree(uploaded).path("id").asText());
+        return UUID.fromString(tree(uploaded).path("id").asString());
     }
     private JsonNode apply(UUID talent, UUID offer) throws Exception {
         MvcResult applied = send(talent, "POST", "/api/offers/" + offer + "/applications", "{}");

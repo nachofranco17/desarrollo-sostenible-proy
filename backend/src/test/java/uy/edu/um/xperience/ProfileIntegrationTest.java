@@ -7,7 +7,6 @@ import tools.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.*;
 import java.net.http.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,9 +42,9 @@ class ProfileIntegrationTest {
         var response = client.get("/profile/me");
         assertThat(response.statusCode()).isEqualTo(200);
         JsonNode body = json.readTree(response.body());
-        assertThat(body.path("nombre").asText()).isEqualTo("Ana");
-        assertThat(body.path("apellido").asText()).isEqualTo("Prueba");
-        assertThat(body.path("correo").asText()).isEqualTo(email);
+        assertThat(body.path("nombre").asString()).isEqualTo("Ana");
+        assertThat(body.path("apellido").asString()).isEqualTo("Prueba");
+        assertThat(body.path("correo").asString()).isEqualTo(email);
         assertThat(body.path("telefono").isNull()).isTrue();
         assertThat(body.path("especializaciones").isArray()).isTrue();
         assertThat(body.path("especializaciones")).isEmpty();
@@ -77,21 +76,21 @@ class ProfileIntegrationTest {
         var update = client.patch("/profile/me", json.writeValueAsString(payload), true);
         assertThat(update.statusCode()).isEqualTo(200);
         JsonNode updated = json.readTree(update.body());
-        assertThat(updated.path("nombre").asText()).isEqualTo("Ana María");
-        assertThat(updated.path("apellido").asText()).isEqualTo("Pérez");
-        assertThat(updated.path("correo").asText()).isEqualTo(updatedEmail);
-        assertThat(updated.path("telefono").asText()).isEqualTo("+598 99 123 456");
-        assertThat(updated.path("especializaciones").get(0).asText()).isEqualTo("Backend");
-        assertThat(updated.path("especializaciones").get(1).asText()).isEqualTo("Seguridad");
+        assertThat(updated.path("nombre").asString()).isEqualTo("Ana María");
+        assertThat(updated.path("apellido").asString()).isEqualTo("Pérez");
+        assertThat(updated.path("correo").asString()).isEqualTo(updatedEmail);
+        assertThat(updated.path("telefono").asString()).isEqualTo("+598 99 123 456");
+        assertThat(updated.path("especializaciones").get(0).asString()).isEqualTo("Backend");
+        assertThat(updated.path("especializaciones").get(1).asString()).isEqualTo("Seguridad");
         assertThat(updated.path("notificarNovedadesCursos").asBoolean()).isFalse();
         assertThat(updated.path("notificarOfertas").asBoolean()).isTrue();
 
         client.post("/auth/logout", "", "application/json", true);
         assertThat(client.login(updatedEmail, PASSWORD).statusCode()).isEqualTo(204);
         JsonNode reloaded = json.readTree(client.get("/profile/me").body());
-        assertThat(reloaded.path("nombre").asText()).isEqualTo("Ana María");
-        assertThat(reloaded.path("correo").asText()).isEqualTo(updatedEmail);
-        assertThat(reloaded.path("telefono").asText()).isEqualTo("+598 99 123 456");
+        assertThat(reloaded.path("nombre").asString()).isEqualTo("Ana María");
+        assertThat(reloaded.path("correo").asString()).isEqualTo(updatedEmail);
+        assertThat(reloaded.path("telefono").asString()).isEqualTo("+598 99 123 456");
         assertThat(reloaded.path("especializaciones")).hasSize(2);
         assertThat(reloaded.path("notificarNovedadesCursos").asBoolean()).isFalse();
         assertThat(jdbc.queryForObject(
@@ -108,12 +107,12 @@ class ProfileIntegrationTest {
         ObjectNode valid = basePayload(email);
         valid.put("telefono", "099 123 456");
         assertThat(client.patch("/profile/me", json.writeValueAsString(valid), true).statusCode()).isEqualTo(200);
-        assertThat(json.readTree(client.get("/profile/me").body()).path("telefono").asText()).isEqualTo("099 123 456");
+        assertThat(json.readTree(client.get("/profile/me").body()).path("telefono").asString()).isEqualTo("099 123 456");
 
         ObjectNode invalid = basePayload(email);
         invalid.put("telefono", "099abc123");
         assertThat(client.patch("/profile/me", json.writeValueAsString(invalid), true).statusCode()).isEqualTo(400);
-        assertThat(json.readTree(client.get("/profile/me").body()).path("telefono").asText()).isEqualTo("099 123 456");
+        assertThat(json.readTree(client.get("/profile/me").body()).path("telefono").asString()).isEqualTo("099 123 456");
     }
 
     @Test
@@ -209,9 +208,9 @@ class ProfileIntegrationTest {
         partial.put("apellido", "Gómez");
         assertThat(client.patch("/profile/me", json.writeValueAsString(partial), true).statusCode()).isEqualTo(200);
         JsonNode profile = json.readTree(client.get("/profile/me").body());
-        assertThat(profile.path("nombre").asText()).isEqualTo("Carla");
-        assertThat(profile.path("apellido").asText()).isEqualTo("Gómez");
-        assertThat(profile.path("telefono").asText()).isEqualTo("099111222");
+        assertThat(profile.path("nombre").asString()).isEqualTo("Carla");
+        assertThat(profile.path("apellido").asString()).isEqualTo("Gómez");
+        assertThat(profile.path("telefono").asString()).isEqualTo("099111222");
     }
 
     @Test
@@ -252,7 +251,7 @@ class ProfileIntegrationTest {
         ObjectNode legitimate = basePayload(emailA);
         legitimate.put("nombre", "SoloA");
         assertThat(first.patch("/profile/me", json.writeValueAsString(legitimate), true).statusCode()).isEqualTo(200);
-        assertThat(json.readTree(second.get("/profile/me").body()).path("nombre").asText()).isEqualTo("Ana");
+        assertThat(json.readTree(second.get("/profile/me").body()).path("nombre").asString()).isEqualTo("Ana");
         assertThat(accounts.byEmail(emailB).orElseThrow().nombre()).isEqualTo("Ana");
         assertThat(accounts.byEmail(emailA).orElseThrow().nombre()).isEqualTo("SoloA");
     }
@@ -282,7 +281,7 @@ class ProfileIntegrationTest {
         payload.put(field, "ADMIN");
         assertThat(client.patch("/profile/me", json.writeValueAsString(payload), true).statusCode()).isEqualTo(400);
         assertThat(accounts.byEmail(email).orElseThrow().nombre()).isEqualTo("Ana");
-        assertThat(json.readTree(client.get("/profile/me").body()).path("nombre").asText()).isEqualTo("Ana");
+        assertThat(json.readTree(client.get("/profile/me").body()).path("nombre").asString()).isEqualTo("Ana");
     }
 
     @Test
@@ -315,7 +314,7 @@ class ProfileIntegrationTest {
         ObjectNode payload = basePayload(email);
         ArrayNode specs = payload.putArray("especializaciones");
         for (JsonNode option : json.readTree(client.get("/profile/me").body()).path("especializacionesDisponibles")) {
-            specs.add(option.asText());
+            specs.add(option.asString());
         }
         specs.add("Backend");
         assertThat(client.patch("/profile/me", json.writeValueAsString(payload), true).statusCode()).isEqualTo(400);
@@ -382,7 +381,7 @@ class ProfileIntegrationTest {
         payload.put("telefono", "099abc123");
         assertThat(client.patch("/profile/me", json.writeValueAsString(payload), true).statusCode()).isEqualTo(400);
         JsonNode profile = json.readTree(client.get("/profile/me").body());
-        assertThat(profile.path("nombre").asText()).isEqualTo("Ana");
+        assertThat(profile.path("nombre").asString()).isEqualTo("Ana");
         assertThat(profile.path("telefono").isNull()).isTrue();
     }
 
@@ -407,8 +406,8 @@ class ProfileIntegrationTest {
         payload.put("apellido", "Ñúñez");
         assertThat(client.patch("/profile/me", json.writeValueAsString(payload), true).statusCode()).isEqualTo(200);
         JsonNode profile = json.readTree(client.get("/profile/me").body());
-        assertThat(profile.path("nombre").asText()).isEqualTo("José María");
-        assertThat(profile.path("apellido").asText()).isEqualTo("Ñúñez");
+        assertThat(profile.path("nombre").asString()).isEqualTo("José María");
+        assertThat(profile.path("apellido").asString()).isEqualTo("Ñúñez");
     }
 
     @Test
@@ -444,7 +443,7 @@ class ProfileIntegrationTest {
         var response = second.patch("/profile/me", json.writeValueAsString(payload), true);
         assertThat(response.statusCode()).isEqualTo(400);
         assertThat(response.body()).doesNotContain("SQL", "constraint", "usuario", "Duplicate", "jdbc", emailA);
-        assertThat(json.readTree(response.body()).path("message").asText())
+        assertThat(json.readTree(response.body()).path("message").asString())
             .isEqualTo("No se pudo guardar el perfil con esos datos.");
         assertThat(accounts.byEmail(emailB).orElseThrow().correo()).isEqualTo(emailB);
         assertThat(accounts.byEmail(emailA)).isPresent();
@@ -459,7 +458,7 @@ class ProfileIntegrationTest {
     }
 
     private String currentEmail(Browser client) throws Exception {
-        return json.readTree(client.get("/account").body()).path("correo").asText();
+        return json.readTree(client.get("/account").body()).path("correo").asString();
     }
 
     private ObjectNode basePayload(String email) {
@@ -487,7 +486,7 @@ class ProfileIntegrationTest {
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType);
             if (csrf) {
                 var token = json.readTree(get("/auth/csrf").body());
-                request.header(token.path("headerName").asText(), token.path("token").asText());
+                request.header(token.path("headerName").asString(), token.path("token").asString());
             }
             return client.send(request.POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
         }
@@ -498,7 +497,7 @@ class ProfileIntegrationTest {
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType);
             if (csrf) {
                 var token = json.readTree(get("/auth/csrf").body());
-                request.header(token.path("headerName").asText(), token.path("token").asText());
+                request.header(token.path("headerName").asString(), token.path("token").asString());
             }
             return client.send(request.method("PATCH", HttpRequest.BodyPublishers.ofString(body)).build(),
                 HttpResponse.BodyHandlers.ofString());

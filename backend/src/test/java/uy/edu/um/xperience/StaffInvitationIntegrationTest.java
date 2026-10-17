@@ -3,7 +3,6 @@ package uy.edu.um.xperience;
 import tools.jackson.databind.ObjectMapper;
 import java.net.*;
 import java.net.http.*;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -288,7 +287,7 @@ class StaffInvitationIntegrationTest {
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json");
             if (csrf) {
                 var token = json.readTree(get("/auth/csrf").body());
-                request.header(token.path("headerName").asText(), token.path("token").asText());
+                request.header(token.path("headerName").asString(), token.path("token").asString());
             }
             if (invitation != null) request.header(InvitationTokens.HEADER, invitation);
             return client.send(request.method(method, HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
@@ -296,7 +295,7 @@ class StaffInvitationIntegrationTest {
         HttpResponse<String> login(String email) throws Exception {
             var csrf = json.readTree(get("/auth/csrf").body());
             return client.send(HttpRequest.newBuilder(uri("/auth/login"))
-                .header(csrf.path("headerName").asText(), csrf.path("token").asText())
+                .header(csrf.path("headerName").asString(), csrf.path("token").asString())
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(Map.of("correo", email, "password", PASSWORD)))).build(), HttpResponse.BodyHandlers.ofString());
         }

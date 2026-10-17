@@ -73,7 +73,7 @@ class PasswordHandlingTest {
 
         try (var input = json.readValue("{\"correo\":\"a@example.test\",\"nombre\":\"Ana\",\"apellido\":\"Test\",\"password\":\"clave \\u00f1 \\uD83D\\uDD10\"}", RegisterRequest.class)) {
             assertThat(input.password()).containsExactly("clave ñ 🔐".toCharArray());
-            assertThat(json.readTree(json.writeValueAsBytes(input)).path("password").isTextual()).isTrue();
+            assertThat(json.readTree(json.writeValueAsBytes(input)).path("password").isString()).isTrue();
             assertThat(input.toString()).doesNotContain("clave");
         }
     }

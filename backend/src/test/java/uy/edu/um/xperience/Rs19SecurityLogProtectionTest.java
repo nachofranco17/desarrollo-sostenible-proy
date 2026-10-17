@@ -6,7 +6,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.*;
 import java.net.http.*;
-import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 import org.junit.jupiter.api.AfterEach;
@@ -60,10 +59,10 @@ class Rs19SecurityLogProtectionTest {
         var events = eventsAfter(before);
         assertThat(events).hasSize(1);
         JsonNode event = json.readTree(events.get(0));
-        assertThat(event.path("event").asText()).isEqualTo("authorization_denied");
-        assertThat(event.path("userId").asText()).isEqualTo(talent.id.toString());
-        assertThat(event.path("action").asText()).isEqualTo("staff.ver");
-        assertThat(event.path("result").asText()).isEqualTo("denied");
+        assertThat(event.path("event").asString()).isEqualTo("authorization_denied");
+        assertThat(event.path("userId").asString()).isEqualTo(talent.id.toString());
+        assertThat(event.path("action").asString()).isEqualTo("staff.ver");
+        assertThat(event.path("result").asString()).isEqualTo("denied");
         assertThat(events.get(0)).doesNotContain(talent.email, PASSWORD);
     }
 
@@ -138,14 +137,14 @@ class Rs19SecurityLogProtectionTest {
         String line = events.get(0);
         assertThat(line).doesNotContain("\n", "\r", "<", ">", "‮", " ");
         JsonNode event = json.readTree(line);
-        assertThat(event.path("event").asText()).isEqualTo("authorization_denied");
-        assertThat(event.path("result").asText()).isEqualTo("denied");
-        assertThat(event.path("reason").asText())
+        assertThat(event.path("event").asString()).isEqualTo("authorization_denied");
+        assertThat(event.path("result").asString()).isEqualTo("denied");
+        assertThat(event.path("reason").asString())
             .startsWith("ROLE\\u000d\\u000a{\\u0022event\\u0022")
             .contains("\\u003cscript\\u003e", "\\u202e", "\\u2028")
             .doesNotContain("\"");
-        assertThat(event.path("action").asText()).isEqualTo("perfil.gestionar\\u000aforjada");
-        assertThat(event.path("operation").asText()).hasSizeLessThan(600).endsWith("[truncado]");
+        assertThat(event.path("action").asString()).isEqualTo("perfil.gestionar\\u000aforjada");
+        assertThat(event.path("operation").asString()).hasSizeLessThan(600).endsWith("[truncado]");
     }
 
     @Test
@@ -213,7 +212,7 @@ class Rs19SecurityLogProtectionTest {
         HttpResponse<String> send(String path, String body, String contentType) throws Exception {
             var token = json.readTree(get("/auth/csrf").body());
             return client.send(HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType)
-                .header(token.path("headerName").asText(), token.path("token").asText())
+                .header(token.path("headerName").asString(), token.path("token").asString())
                 .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
         }
 

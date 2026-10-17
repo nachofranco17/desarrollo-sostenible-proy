@@ -32,11 +32,11 @@ public final class EnrollmentCreateParser {
         if (node == null || node.isNull()) {
             throw new EnrollmentValidationException("El campo cursoId no puede ser null.");
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new EnrollmentValidationException("El campo cursoId debe ser un UUID en texto.");
         }
         try {
-            return UUID.fromString(node.asText().strip());
+            return UUID.fromString(node.asString().strip());
         } catch (IllegalArgumentException ex) {
             throw new EnrollmentValidationException("El campo cursoId tiene un formato inválido.");
         }
