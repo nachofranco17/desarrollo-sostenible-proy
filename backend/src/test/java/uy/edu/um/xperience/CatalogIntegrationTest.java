@@ -1,7 +1,7 @@
 package uy.edu.um.xperience;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.net.*;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
@@ -42,9 +42,9 @@ class CatalogIntegrationTest {
         UUID id = publishCourse(admin, "CURSO", "Catálogo Curso Java", "Java", "INICIAL", 10, "0");
         JsonNode items = items(anonymous().get(CATALOG + "?q=" + URLEncoder.encode("Catálogo Curso Java", StandardCharsets.UTF_8)));
         assertThat(items).anySatisfy(n -> {
-            assertThat(n.path("id").asText()).isEqualTo(id.toString());
-            assertThat(n.path("tipo").asText()).isEqualTo("CURSO");
-            assertThat(n.path("titulo").asText()).isEqualTo("Catálogo Curso Java");
+            assertThat(n.path("id").asString()).isEqualTo(id.toString());
+            assertThat(n.path("tipo").asString()).isEqualTo("CURSO");
+            assertThat(n.path("titulo").asString()).isEqualTo("Catálogo Curso Java");
         });
     }
 
@@ -54,8 +54,8 @@ class CatalogIntegrationTest {
         UUID id = publishCourse(admin, "PROYECTO", "Catálogo Proyecto API", "Spring", "INTERMEDIO", 20, "100.00");
         JsonNode items = items(anonymous().get(CATALOG + "?q=" + URLEncoder.encode("Catálogo Proyecto API", StandardCharsets.UTF_8)));
         assertThat(items).anySatisfy(n -> {
-            assertThat(n.path("id").asText()).isEqualTo(id.toString());
-            assertThat(n.path("tipo").asText()).isEqualTo("PROYECTO");
+            assertThat(n.path("id").asString()).isEqualTo(id.toString());
+            assertThat(n.path("tipo").asString()).isEqualTo("PROYECTO");
         });
     }
 
@@ -65,7 +65,7 @@ class CatalogIntegrationTest {
         String title = "BuscarCurso-" + UUID.randomUUID();
         publishCourse(admin, "CURSO", title, "Java", "INICIAL", 8, "0");
         JsonNode items = items(anonymous().get(CATALOG + "?q=" + enc(title.substring(0, 12))));
-        assertThat(items).anyMatch(n -> title.equals(n.path("titulo").asText()));
+        assertThat(items).anyMatch(n -> title.equals(n.path("titulo").asString()));
     }
 
     @Test
@@ -74,7 +74,7 @@ class CatalogIntegrationTest {
         String title = "BuscarProyecto-" + UUID.randomUUID();
         publishCourse(admin, "PROYECTO", title, "React", "AVANZADO", 30, "50");
         JsonNode items = items(anonymous().get(CATALOG + "?nombre=" + enc(title.substring(0, 14))));
-        assertThat(items).anyMatch(n -> title.equals(n.path("titulo").asText()));
+        assertThat(items).anyMatch(n -> title.equals(n.path("titulo").asString()));
     }
 
     @Test
@@ -90,7 +90,7 @@ class CatalogIntegrationTest {
         publishCourse(admin, "CURSO", "A " + tech, tech, "INICIAL", 5, "0");
         publishCourse(admin, "PROYECTO", "B other", "OtraTech", "INICIAL", 5, "0");
         JsonNode items = items(anonymous().get(CATALOG + "?tecnologia=" + enc(tech)));
-        assertThat(items).isNotEmpty().allMatch(n -> tech.equalsIgnoreCase(n.path("tecnologia").asText()));
+        assertThat(items).isNotEmpty().allMatch(n -> tech.equalsIgnoreCase(n.path("tecnologia").asString()));
     }
 
     @Test
@@ -100,7 +100,7 @@ class CatalogIntegrationTest {
         publishCourse(admin, "CURSO", "NivelAv-" + marker, "Java", "AVANZADO", 12, "10");
         publishCourse(admin, "CURSO", "NivelIn-" + marker, "Java", "INICIAL", 12, "10");
         JsonNode items = items(anonymous().get(CATALOG + "?nivel=AVANZADO&q=" + enc(marker)));
-        assertThat(items).isNotEmpty().allMatch(n -> "AVANZADO".equals(n.path("nivel").asText()));
+        assertThat(items).isNotEmpty().allMatch(n -> "AVANZADO".equals(n.path("nivel").asString()));
     }
 
     @Test
@@ -110,7 +110,7 @@ class CatalogIntegrationTest {
         publishCourse(admin, "CURSO", "Dur40-" + marker, "Java", "INICIAL", 40, "0");
         publishCourse(admin, "CURSO", "Dur5-" + marker, "Java", "INICIAL", 5, "0");
         JsonNode items = items(anonymous().get(CATALOG + "?duracionMin=30&duracionMax=50&q=" + enc(marker)));
-        assertThat(items).extracting(n -> n.path("titulo").asText()).containsExactly("Dur40-" + marker);
+        assertThat(items).extracting(n -> n.path("titulo").asString()).containsExactly("Dur40-" + marker);
     }
 
     @Test
@@ -120,9 +120,9 @@ class CatalogIntegrationTest {
         publishCourse(admin, "CURSO", "Gratis-" + marker, "Java", "INICIAL", 10, "0");
         publishCourse(admin, "CURSO", "Pago-" + marker, "Java", "INICIAL", 10, "99.50");
         JsonNode free = items(anonymous().get(CATALOG + "?costoMin=0&costoMax=0&q=" + enc(marker)));
-        assertThat(free).extracting(n -> n.path("titulo").asText()).containsExactly("Gratis-" + marker);
+        assertThat(free).extracting(n -> n.path("titulo").asString()).containsExactly("Gratis-" + marker);
         JsonNode paid = items(anonymous().get(CATALOG + "?costoMin=50&costoMax=100&q=" + enc(marker)));
-        assertThat(paid).extracting(n -> n.path("titulo").asText()).containsExactly("Pago-" + marker);
+        assertThat(paid).extracting(n -> n.path("titulo").asString()).containsExactly("Pago-" + marker);
     }
 
     @Test
@@ -132,7 +132,7 @@ class CatalogIntegrationTest {
         publishCourse(admin, "CURSO", "Combo-" + marker, "Kotlin", "INTERMEDIO", 15, "20");
         publishCourse(admin, "CURSO", "Other-" + marker, "Kotlin", "INICIAL", 15, "20");
         JsonNode items = items(anonymous().get(CATALOG + "?tecnologia=Kotlin&nivel=INTERMEDIO&q=" + enc(marker)));
-        assertThat(items).extracting(n -> n.path("titulo").asText()).containsExactly("Combo-" + marker);
+        assertThat(items).extracting(n -> n.path("titulo").asString()).containsExactly("Combo-" + marker);
     }
 
     @Test
@@ -144,7 +144,7 @@ class CatalogIntegrationTest {
         publishCourse(admin, "PROYECTO", "Near-" + marker, "Go", "AVANZADO", 25, "80.00");
         String query = "?q=" + enc("AllFilters") + "&tecnologia=Go&nivel=AVANZADO&duracionMin=20&duracionMax=30&costoMin=70&costoMax=76";
         JsonNode items = items(anonymous().get(CATALOG + query));
-        assertThat(items).extracting(n -> n.path("titulo").asText()).containsExactly(title);
+        assertThat(items).extracting(n -> n.path("titulo").asString()).containsExactly(title);
     }
 
     @Test
@@ -166,10 +166,10 @@ class CatalogIntegrationTest {
         var response = anonymous().get(CATALOG + "/" + id);
         assertThat(response.statusCode()).isEqualTo(200);
         JsonNode body = json.readTree(response.body());
-        assertThat(body.path("tipo").asText()).isEqualTo("CURSO");
-        assertThat(body.path("titulo").asText()).isEqualTo("Detalle Curso");
-        assertThat(body.path("descripcion").asText()).isEqualTo("Descripción");
-        assertThat(body.path("empresaNombre").asText()).isNotBlank();
+        assertThat(body.path("tipo").asString()).isEqualTo("CURSO");
+        assertThat(body.path("titulo").asString()).isEqualTo("Detalle Curso");
+        assertThat(body.path("descripcion").asString()).isEqualTo("Descripción");
+        assertThat(body.path("empresaNombre").asString()).isNotBlank();
         assertThat(body.path("lecciones").isMissingNode() || body.path("lecciones").isNull()).isTrue();
     }
 
@@ -180,8 +180,8 @@ class CatalogIntegrationTest {
         var response = anonymous().get(CATALOG + "/" + id);
         assertThat(response.statusCode()).isEqualTo(200);
         JsonNode body = json.readTree(response.body());
-        assertThat(body.path("tipo").asText()).isEqualTo("PROYECTO");
-        assertThat(body.path("titulo").asText()).isEqualTo("Detalle Proyecto");
+        assertThat(body.path("tipo").asString()).isEqualTo("PROYECTO");
+        assertThat(body.path("titulo").asString()).isEqualTo("Detalle Proyecto");
         assertThat(body.path("costo").decimalValue()).isEqualByComparingTo("12.50");
     }
 
@@ -196,7 +196,7 @@ class CatalogIntegrationTest {
     void invalidLevelRejected() throws Exception {
         var response = anonymous().get(CATALOG + "?nivel=EXPERTO");
         assertThat(response.statusCode()).isEqualTo(400);
-        assertThat(json.readTree(response.body()).path("message").asText()).containsIgnoringCase("Nivel");
+        assertThat(json.readTree(response.body()).path("message").asString()).containsIgnoringCase("Nivel");
     }
 
     @Test
@@ -226,7 +226,7 @@ class CatalogIntegrationTest {
         assertThat(anonymous().get(CATALOG + "/" + draft).statusCode()).isIn(401, 403);
         assertThat(anonymous().get(CATALOG + "/" + published).statusCode()).isEqualTo(200);
         JsonNode items = items(anonymous().get(CATALOG + "?q=" + enc("Borrador secreto")));
-        assertThat(items).noneMatch(n -> "Borrador secreto".equals(n.path("titulo").asText()));
+        assertThat(items).noneMatch(n -> "Borrador secreto".equals(n.path("titulo").asString()));
     }
 
     // ---- apoyo ----
@@ -262,7 +262,7 @@ class CatalogIntegrationTest {
         body.put("costo", new java.math.BigDecimal(cost));
         var response = client.send("POST", MANAGE, json.writeValueAsString(body));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private JsonNode items(HttpResponse<String> response) throws Exception {
@@ -276,7 +276,7 @@ class CatalogIntegrationTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser admin(UUID company) throws Exception {
@@ -315,16 +315,15 @@ class CatalogIntegrationTest {
 
         HttpResponse<String> login(String email) throws Exception {
             return send("POST", "/auth/login", HttpRequest.BodyPublishers.ofString(
-                "correo=" + URLEncoder.encode(email, StandardCharsets.UTF_8)
-                    + "&password=" + URLEncoder.encode(PASSWORD, StandardCharsets.UTF_8)),
-                "application/x-www-form-urlencoded");
+                json.writeValueAsString(Map.of("correo", email, "password", PASSWORD))),
+                "application/json");
         }
 
         private HttpResponse<String> send(String method, String path, HttpRequest.BodyPublisher body,
                                           String contentType) throws Exception {
             var token = json.readTree(get("/auth/csrf").body());
             var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType)
-                .header(token.path("headerName").asText(), token.path("token").asText())
+                .header(token.path("headerName").asString(), token.path("token").asString())
                 .method(method, body).build();
             return client.send(request, HttpResponse.BodyHandlers.ofString());
         }

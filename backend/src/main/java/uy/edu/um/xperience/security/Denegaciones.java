@@ -54,7 +54,8 @@ public class Denegaciones {
             registry.denegado(subject, action, request.getRequestURI());
         } catch (RuntimeException error) {
             // A failing access log must never turn a denial into something else; the denial still happens.
-            log.error("No se pudo registrar la denegacion de {} sobre {}", action, request.getRequestURI(), error);
+            log.error("No se pudo registrar la denegacion de {} sobre {}", CodificadorRegistro.codificar(action),
+                CodificadorRegistro.codificar(request.getRequestURI()), error);
         }
     }
 
@@ -139,10 +140,12 @@ public class Denegaciones {
     }
 
     private static String clasificar(String action, String path) {
-        if ((action != null && action.startsWith("material.")) || path.contains("/materials/")) {
+        if ((action != null && (action.startsWith("material.") || action.startsWith("curriculum.")))
+                || path.contains("/materials/") || path.endsWith("/curriculum")) {
             return FILE_ACCESS_DENIED;
         }
-        if (path.contains("/company/courses") || (action != null && action.startsWith("curso."))) {
+        if (path.contains("/company/courses") || path.contains("/company/offers")
+                || (action != null && action.startsWith("curso."))) {
             return ORGANIZATION_ACCESS_DENIED;
         }
         if (action != null && action.startsWith("staff.")) {

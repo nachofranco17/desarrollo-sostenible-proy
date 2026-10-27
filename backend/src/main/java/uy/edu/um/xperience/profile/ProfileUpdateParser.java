@@ -1,6 +1,6 @@
 package uy.edu.um.xperience.profile;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -24,8 +24,6 @@ public final class ProfileUpdateParser {
     private static final int EMAIL_MAX = 254;
     private static final int PHONE_MIN = 7;
     private static final int PHONE_MAX = 30;
-    private static final int PASSWORD_MIN = 12;
-    private static final int PASSWORD_MAX = 128;
 
     private static final Pattern NAME_PATTERN = Pattern.compile(
         "^[\\p{L}](?:[\\p{L}\\p{M} ]*[\\p{L}\\p{M}])?$",
@@ -36,11 +34,11 @@ public final class ProfileUpdateParser {
 
     private ProfileUpdateParser() {}
 
-    public static ProfileUpdate parse(JsonNode body) {
+    public static ProfileUpdate parse(JsonNode body, FieldChange<char[]> actual, FieldChange<char[]> nueva) {
         if (body == null || !body.isObject()) {
             throw new ProfileValidationException("El cuerpo debe ser un objeto JSON.");
         }
-        Iterator<String> names = body.fieldNames();
+        Iterator<String> names = body.propertyNames().iterator();
         while (names.hasNext()) {
             String field = names.next();
             if (!ALLOWED_FIELDS.contains(field)) {
@@ -59,8 +57,8 @@ public final class ProfileUpdateParser {
             parseSpecializations(body),
             parseBoolean(body, "notificarNovedadesCursos"),
             parseBoolean(body, "notificarOfertas"),
-            parsePassword(body, "passwordActual"),
-            parsePassword(body, "passwordNueva")
+            actual,
+            nueva
         );
     }
 
@@ -72,10 +70,10 @@ public final class ProfileUpdateParser {
         if (node.isNull()) {
             throw new ProfileValidationException("El campo " + field + " no puede ser null.");
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new ProfileValidationException("El campo " + field + " debe ser texto.");
         }
-        String value = node.asText().strip();
+        String value = node.asString().strip();
         if (value.isEmpty()) {
             throw new ProfileValidationException("El campo " + field + " es obligatorio.");
         }
@@ -98,10 +96,10 @@ public final class ProfileUpdateParser {
         if (node.isNull()) {
             throw new ProfileValidationException("El correo no puede ser null.");
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new ProfileValidationException("El correo debe ser texto.");
         }
-        String value = RegisterRequest.normalizeEmail(node.asText());
+        String value = RegisterRequest.normalizeEmail(node.asString());
         if (value == null || value.isEmpty() || value.length() > EMAIL_MAX || !EMAIL_PATTERN.matcher(value).matches()) {
             throw new ProfileValidationException("El correo tiene un formato inválido.");
         }
@@ -116,10 +114,10 @@ public final class ProfileUpdateParser {
         if (node.isNull()) {
             return FieldChange.clear();
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new ProfileValidationException("El teléfono debe ser texto.");
         }
-        String value = node.asText().strip();
+        String value = node.asString().strip();
         if (value.isEmpty()) {
             return FieldChange.clear();
         }
@@ -152,10 +150,10 @@ public final class ProfileUpdateParser {
         }
         List<String> values = new ArrayList<>();
         for (JsonNode item : node) {
-            if (!item.isTextual()) {
+            if (!item.isString()) {
                 throw new ProfileValidationException("Cada especialización debe ser texto.");
             }
-            String value = item.asText().strip();
+            String value = item.asString().strip();
             if (value.isEmpty()) {
                 throw new ProfileValidationException("Las especializaciones no pueden estar vacías.");
             }
@@ -174,25 +172,6 @@ public final class ProfileUpdateParser {
             throw new ProfileValidationException("El campo " + field + " debe ser un booleano (true/false).");
         }
         return FieldChange.of(node.booleanValue());
-    }
-
-    private static FieldChange<String> parsePassword(JsonNode body, String field) {
-        if (!body.has(field)) {
-            return FieldChange.absent();
-        }
-        JsonNode node = body.get(field);
-        if (node.isNull()) {
-            throw new ProfileValidationException("El campo " + field + " no puede ser null.");
-        }
-        if (!node.isTextual()) {
-            throw new ProfileValidationException("El campo " + field + " debe ser texto.");
-        }
-        String value = node.asText();
-        if (value.length() < PASSWORD_MIN || value.length() > PASSWORD_MAX) {
-            throw new ProfileValidationException(
-                "La contraseña debe tener entre " + PASSWORD_MIN + " y " + PASSWORD_MAX + " caracteres.");
-        }
-        return FieldChange.of(value);
     }
 
     private static boolean containsControlChars(String value) {

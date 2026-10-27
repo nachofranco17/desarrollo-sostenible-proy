@@ -1,6 +1,6 @@
 package uy.edu.um.xperience.enrollment;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
@@ -16,7 +16,7 @@ public final class EnrollmentCreateParser {
         if (body == null || !body.isObject()) {
             throw new EnrollmentValidationException("El cuerpo debe ser un objeto JSON.");
         }
-        Iterator<String> names = body.fieldNames();
+        Iterator<String> names = body.propertyNames().iterator();
         while (names.hasNext()) {
             String field = names.next();
             if (!ALLOWED_FIELDS.contains(field)) {
@@ -32,11 +32,11 @@ public final class EnrollmentCreateParser {
         if (node == null || node.isNull()) {
             throw new EnrollmentValidationException("El campo cursoId no puede ser null.");
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new EnrollmentValidationException("El campo cursoId debe ser un UUID en texto.");
         }
         try {
-            return UUID.fromString(node.asText().strip());
+            return UUID.fromString(node.asString().strip());
         } catch (IllegalArgumentException ex) {
             throw new EnrollmentValidationException("El campo cursoId tiene un formato inválido.");
         }

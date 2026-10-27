@@ -3,7 +3,7 @@ package uy.edu.um.xperience;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,7 +36,7 @@ class Rs18LoggerFailureTest {
 
         String email = UUID.randomUUID() + "@example.test";
         provisioner.create("RS18 logger fail",
-            new RegisterRequest(email, "Admin", "Test", "una frase suficientemente larga"), "tests");
+            new RegisterRequest(email, "Admin", "Test", "una frase suficientemente larga".toCharArray()), "tests");
         Sujeto subject = Sujeto.from(accounts.byEmail(email).orElseThrow());
 
         // Ruta sin handler de negocio: el PEP deniega. El registro explota y aun así debe quedar 403.

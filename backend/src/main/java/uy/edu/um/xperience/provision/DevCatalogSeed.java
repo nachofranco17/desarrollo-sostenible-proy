@@ -23,7 +23,6 @@ public class DevCatalogSeed implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DevCatalogSeed.class);
     private static final String MARKER = "Prueba";
     private static final String ADMIN_EMAIL = "admin-prueba@example.test";
-    private static final String ADMIN_PASSWORD = "una frase de prueba segura";
 
     private final JdbcTemplate jdbc;
     private final CompanyProvisioner provisioner;
@@ -67,7 +66,7 @@ public class DevCatalogSeed implements ApplicationRunner {
 
         log.info("Seed de catálogo listo: '{}' y '{}' (empresa {}).",
             "Curso Prueba Java", "Proyecto Prueba API", empresaId);
-        log.info("Si se creó empresa demo, admin: {} / {}", ADMIN_EMAIL, ADMIN_PASSWORD);
+        log.info("Si se creó empresa demo, admin: {}. Consultá las credenciales de desarrollo en README.md.", ADMIN_EMAIL);
     }
 
     private java.util.Optional<UUID> firstCompanyId() {
@@ -88,8 +87,11 @@ public class DevCatalogSeed implements ApplicationRunner {
 
     private UUID createDemoCompany() {
         log.info("No hay empresas: creando 'Empresa Prueba' con admin {}.", ADMIN_EMAIL);
-        return provisioner.create("Empresa Prueba",
-            new RegisterRequest(ADMIN_EMAIL, "Admin", "Prueba", ADMIN_PASSWORD), "dev-seed");
+        try (var admin = new RegisterRequest(ADMIN_EMAIL, "Admin", "Prueba",
+                new char[] {'u', 'n', 'a', ' ', 'f', 'r', 'a', 's', 'e', ' ', 'd', 'e', ' ',
+                    'p', 'r', 'u', 'e', 'b', 'a', ' ', 's', 'e', 'g', 'u', 'r', 'a'})) {
+            return provisioner.create("Empresa Prueba", admin, "dev-seed");
+        }
     }
 
     private UUID insertPublished(UUID empresaId, UUID autorId, String tipo, String titulo,

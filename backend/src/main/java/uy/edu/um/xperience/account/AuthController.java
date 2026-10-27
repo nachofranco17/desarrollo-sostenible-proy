@@ -23,7 +23,7 @@ public class AuthController {
     @RequiereAccion("cuenta.registrar")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public Map<String, String> register(@Valid @RequestBody RegisterRequest input) {
-        try { registration.register(subjects.current(), input); }
+        try (input) { registration.register(subjects.current(), input); }
         catch (DataIntegrityViolationException error) {
             // The service transaction has rolled back. Only a unique-key collision is a generic duplicate.
             boolean duplicate = false;

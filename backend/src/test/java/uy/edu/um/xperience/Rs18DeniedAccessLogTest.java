@@ -3,9 +3,9 @@ package uy.edu.um.xperience;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import java.net.*;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
@@ -72,7 +72,7 @@ class Rs18DeniedAccessLogTest {
 
         JsonNode event = singleEvent();
         assertDenialBasics(event, talentA.id.toString(), "profile", "read", Denegaciones.INSTANCE_ACCESS_DENIED);
-        assertThat(event.path("resourceId").asText()).isEqualTo(talentB.id.toString());
+        assertThat(event.path("resourceId").asString()).isEqualTo(talentB.id.toString());
         assertNoSensitiveData(event, talentA.email, talentB.email, PASSWORD, SECRET_PASSWORD);
     }
 
@@ -89,7 +89,7 @@ class Rs18DeniedAccessLogTest {
 
         JsonNode event = singleEvent();
         assertDenialBasics(event, recruiter.id.toString(), "course", "read", Denegaciones.ROLE_PERMISSION_DENIED);
-        assertThat(event.path("action").asText()).isEqualTo("curso.ver_borrador");
+        assertThat(event.path("action").asString()).isEqualTo("curso.ver_borrador");
         assertNoSensitiveData(event, recruiter.email, PASSWORD, SECRET_PASSWORD);
     }
 
@@ -107,7 +107,7 @@ class Rs18DeniedAccessLogTest {
 
         JsonNode event = singleEvent();
         assertDenialBasics(event, editorB.id.toString(), "course", "read", Denegaciones.ORGANIZATION_ACCESS_DENIED);
-        assertThat(event.path("resourceId").asText()).isEqualTo(courseId.toString());
+        assertThat(event.path("resourceId").asString()).isEqualTo(courseId.toString());
         assertNoSensitiveData(event, editorA.email, editorB.email, PASSWORD);
     }
 
@@ -129,7 +129,7 @@ class Rs18DeniedAccessLogTest {
 
         JsonNode event = singleEvent();
         assertDenialBasics(event, talent.id.toString(), "profile", "update", Denegaciones.FIELD_ACCESS_DENIED);
-        assertThat(event.path("field").asText()).isEqualTo("rol");
+        assertThat(event.path("field").asString()).isEqualTo("rol");
         assertThat(event.has("value")).isFalse();
         String raw = event.toString();
         assertThat(raw).doesNotContain(SECRET_PASSWORD);
@@ -150,7 +150,7 @@ class Rs18DeniedAccessLogTest {
         var editorB = member(companyB, "EDITOR");
         UUID courseId = create(editorA, "CURSO", "Con archivo");
         String materialId = json.readTree(editorA.upload(COURSES + "/" + courseId + "/materials", "secreto.pdf", PDF).body())
-            .path("materiales").get(0).path("id").asText();
+            .path("materiales").get(0).path("id").asString();
         clearEvents();
 
         var response = editorB.getBytes(COURSES + "/" + courseId + "/materials/" + materialId);
@@ -158,7 +158,7 @@ class Rs18DeniedAccessLogTest {
 
         JsonNode event = singleEvent();
         assertDenialBasics(event, editorB.id.toString(), "file", "download", Denegaciones.FILE_ACCESS_DENIED);
-        assertThat(event.path("resourceId").asText()).isEqualTo(materialId);
+        assertThat(event.path("resourceId").asString()).isEqualTo(materialId);
         String raw = event.toString();
         assertThat(raw).doesNotContain("%PDF");
         assertThat(raw).doesNotContain("secreto.pdf");
@@ -171,18 +171,65 @@ class Rs18DeniedAccessLogTest {
         assertNoSensitiveData(event, editorA.email, editorB.email);
     }
 
+    @Test
+    void rf6CrossCompanyListProfileCurriculumAndPublishDenialsHaveSafeMetadata() throws Exception {
+        UUID companyA = company();
+        var adminA = member(companyA, "ADMIN");
+        var recruiterB = member(company(), "RECLUTADOR");
+        var talent = registerTalent();
+        assertThat(talent.upload("/profile/me/curriculum", "privado.pdf", PDF).statusCode()).isEqualTo(201);
+        var created = adminA.send("POST", "/company/offers", json.writeValueAsString(Map.of(
+            "titulo", "Oferta privada de empresa", "descripcion", "Descripción", "cursosRequeridos", List.of())));
+        assertThat(created.statusCode()).isEqualTo(201);
+        String offerId = json.readTree(created.body()).path("id").asString();
+        assertThat(adminA.send("POST", "/company/offers/" + offerId + "/publish", "{}").statusCode())
+            .isIn(200, 204);
+        var applied = talent.send("POST", "/offers/" + offerId + "/applications", "{}");
+        assertThat(applied.statusCode()).isEqualTo(201);
+        String applicationId = json.readTree(applied.body()).path("id").asString();
+        String applications = "/company/offers/" + offerId + "/applications";
+
+        clearEvents();
+        assertThat(recruiterB.get(applications + "?q=busqueda-secreta").statusCode()).isEqualTo(403);
+        JsonNode event = singleEvent();
+        assertDenialBasics(event, recruiterB.id.toString(), "application", "list", Denegaciones.ORGANIZATION_ACCESS_DENIED);
+        assertThat(event.path("resourceId").asString()).isEqualTo(offerId);
+        assertNoSensitiveData(event, adminA.email, recruiterB.email, talent.email, "busqueda-secreta");
+
+        clearEvents();
+        assertThat(recruiterB.get(applications + "/" + applicationId + "/profile").statusCode()).isEqualTo(403);
+        event = singleEvent();
+        assertDenialBasics(event, recruiterB.id.toString(), "profile", "read", Denegaciones.ORGANIZATION_ACCESS_DENIED);
+        assertThat(event.path("resourceId").asString()).isEqualTo(applicationId);
+        assertNoSensitiveData(event, adminA.email, talent.email, PASSWORD);
+
+        clearEvents();
+        assertThat(recruiterB.getBytes(applications + "/" + applicationId + "/curriculum").statusCode()).isEqualTo(403);
+        event = singleEvent();
+        assertDenialBasics(event, recruiterB.id.toString(), "file", "download", Denegaciones.FILE_ACCESS_DENIED);
+        assertThat(event.path("resourceId").asString()).isEqualTo(applicationId);
+        assertNoSensitiveData(event, "privado.pdf", "%PDF", "claveAlmacen", "./.data", talent.email);
+
+        clearEvents();
+        assertThat(recruiterB.send("POST", "/company/offers/" + offerId + "/publish", "{}").statusCode()).isEqualTo(403);
+        event = singleEvent();
+        assertDenialBasics(event, recruiterB.id.toString(), "offer", "publish", Denegaciones.ORGANIZATION_ACCESS_DENIED);
+        assertThat(event.path("resourceId").asString()).isEqualTo(offerId);
+        assertNoSensitiveData(event, adminA.email, recruiterB.email, talent.email, PASSWORD);
+    }
+
     // ---- assertions ----
 
     private void assertDenialBasics(JsonNode event, String userId, String resourceType, String operation, String reason) {
-        assertThat(event.path("event").asText()).isEqualTo("authorization_denied");
-        assertThat(event.path("result").asText()).isEqualTo("denied");
-        assertThat(event.path("userId").asText()).isEqualTo(userId);
-        assertThat(event.path("resourceType").asText()).isEqualTo(resourceType);
-        assertThat(event.path("operation").asText()).isEqualTo(operation);
-        assertThat(event.path("reason").asText()).isEqualTo(reason);
-        assertThat(event.path("origin").asText()).isNotBlank();
-        assertThat(event.path("timestamp").asText()).isNotBlank();
-        assertThatCode(() -> Instant.parse(event.path("timestamp").asText())).doesNotThrowAnyException();
+        assertThat(event.path("event").asString()).isEqualTo("authorization_denied");
+        assertThat(event.path("result").asString()).isEqualTo("denied");
+        assertThat(event.path("userId").asString()).isEqualTo(userId);
+        assertThat(event.path("resourceType").asString()).isEqualTo(resourceType);
+        assertThat(event.path("operation").asString()).isEqualTo(operation);
+        assertThat(event.path("reason").asString()).isEqualTo(reason);
+        assertThat(event.path("origin").asString()).isNotBlank();
+        assertThat(event.path("timestamp").asString()).isNotBlank();
+        assertThatCode(() -> Instant.parse(event.path("timestamp").asString())).doesNotThrowAnyException();
         assertThat(event.isObject()).isTrue();
     }
 
@@ -225,7 +272,7 @@ class Rs18DeniedAccessLogTest {
 
     private UUID company() {
         return provisioner.create("Empresa " + UUID.randomUUID(),
-            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD), "test-suite");
+            new RegisterRequest(email(), "Admin", "Prueba", PASSWORD.toCharArray()), "test-suite");
     }
 
     private Browser member(UUID company, String role) throws Exception {
@@ -242,7 +289,7 @@ class Rs18DeniedAccessLogTest {
     private UUID create(Browser client, String type, String title) throws Exception {
         var response = client.send("POST", COURSES, course(type, title));
         assertThat(response.statusCode()).isEqualTo(201);
-        return UUID.fromString(json.readTree(response.body()).path("id").asText());
+        return UUID.fromString(json.readTree(response.body()).path("id").asString());
     }
 
     private String course(String type, String title) throws Exception {
@@ -271,14 +318,13 @@ class Rs18DeniedAccessLogTest {
 
         HttpResponse<String> register(String mail) throws Exception {
             return post("/auth/register", json.writeValueAsString(
-                new RegisterRequest(mail, "Ana", "Prueba", PASSWORD)), "application/json", true);
+                new RegisterRequest(mail, "Ana", "Prueba", PASSWORD.toCharArray())), "application/json", true);
         }
 
         HttpResponse<String> login(String mail, String password) throws Exception {
             return post("/auth/login",
-                "correo=" + URLEncoder.encode(mail, StandardCharsets.UTF_8)
-                    + "&password=" + URLEncoder.encode(password, StandardCharsets.UTF_8),
-                "application/x-www-form-urlencoded", true);
+                json.writeValueAsString(Map.of("correo", mail, "password", password)),
+                "application/json", true);
         }
 
         HttpResponse<String> get(String path) throws Exception {
@@ -304,7 +350,7 @@ class Rs18DeniedAccessLogTest {
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body));
             var token = json.readTree(get("/auth/csrf").body());
-            builder.header(token.path("headerName").asText(), token.path("token").asText());
+            builder.header(token.path("headerName").asString(), token.path("token").asString());
             return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         }
 
@@ -318,7 +364,7 @@ class Rs18DeniedAccessLogTest {
                 .method(method, HttpRequest.BodyPublishers.ofString(body == null ? "" : body));
             if (csrf) {
                 var token = json.readTree(get("/auth/csrf").body());
-                builder.header(token.path("headerName").asText(), token.path("token").asText());
+                builder.header(token.path("headerName").asString(), token.path("token").asString());
             }
             return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         }

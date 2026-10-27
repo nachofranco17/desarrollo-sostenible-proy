@@ -26,13 +26,15 @@ function technologyChoices(fromApi: string[] = []) {
   return [...new Set([...TECHNOLOGY_OPTIONS, ...fromApi])].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
-export function CatalogList() {
+export function CatalogList({ account }: { account: Account | null }) {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<CatalogFilters>(EMPTY);
   const [draft, setDraft] = useState<CatalogFilters>(EMPTY);
   const [page, setPage] = useState<CatalogPage | null>(null);
+  const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const isTalent = account?.rol === 'TALENTO';
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +46,23 @@ export function CatalogList() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [filters]);
+
+  useEffect(() => {
+    if (!isTalent) {
+      setEnrolledIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    api<EnrollmentPage>('/enrollments/me')
+      .then((result) => {
+        if (cancelled) return;
+        setEnrolledIds(new Set(result.items.map((item) => item.cursoId)));
+      })
+      .catch(() => {
+        if (!cancelled) setEnrolledIds(new Set());
+      });
+    return () => { cancelled = true; };
+  }, [isTalent]);
 
   function apply(event: FormEvent) {
     event.preventDefault();
@@ -99,10 +118,14 @@ export function CatalogList() {
           <input type="number" min={0} max={100000} step="0.01" value={draft.costoMax ?? ''}
             onChange={(e) => setDraft({ ...draft, costoMax: e.target.value })} />
         </label>
-      </div>
-      <div className="catalog-actions">
-        <button type="submit">Aplicar filtros</button>
-        <button type="button" className="secondary" onClick={clear}>Limpiar filtros</button>
+        <div className="catalog-action-cell">
+          <span className="catalog-actions-spacer" aria-hidden="true">Aplicar</span>
+          <button type="submit">Aplicar filtros</button>
+        </div>
+        <div className="catalog-action-cell">
+          <span className="catalog-actions-spacer" aria-hidden="true">Limpiar</span>
+          <button type="button" className="secondary" onClick={clear}>Limpiar filtros</button>
+        </div>
       </div>
     </form>
 
@@ -120,7 +143,12 @@ export function CatalogList() {
           <tbody>
             {items.map((item) => (
               <tr key={item.id}>
-                <td>{item.titulo}</td>
+                <td>
+                  <span className="catalog-title-cell">
+                    {item.titulo}
+                    {enrolledIds.has(item.id) && <span className="badge enrolled-badge">Inscripto</span>}
+                  </span>
+                </td>
                 <td>{TYPES[item.tipo]}</td>
                 <td>{item.tecnologia}</td>
                 <td>{LEVELS[item.nivel]}</td>

@@ -11,7 +11,7 @@ import uy.edu.um.xperience.course.Course;
 
 /**
  * Persistencia de inscripciones (RF4). Toda lectura por id se acota al talento de la sesión
- * (RS11): conocer el UUID no alcanza para ver o modificar la inscripción de otro.
+ * (RS11 / RS13): conocer el UUID no alcanza para ver o modificar la inscripción de otro.
  */
 @Repository
 public class EnrollmentRepository {

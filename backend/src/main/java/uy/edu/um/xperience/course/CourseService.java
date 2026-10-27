@@ -246,7 +246,7 @@ public class CourseService {
                 }
             }
         });
-        courses.addMaterial(id, subject.empresaId(), cleanFileName(file.getOriginalFilename()), type.mime(),
+        courses.addMaterial(id, subject.empresaId(), cleanFileName(file.getOriginalFilename(), type), type.mime(),
             file.getSize(), key, subject.usuarioId());
         courses.touch(id, subject.empresaId());
         return reload(subject, id);
@@ -254,10 +254,12 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public Download download(UUID id, UUID materialId) {
-        Sujeto subject = staffSubject();
-        owned(subject, "material.descargar", id, false);
+        Sujeto subject = subjects.current();
+        var course = courses.findForDownload(id, subject.empresaId(), subject.usuarioId())
+            .orElseThrow(CourseService::denied);
+        if (!policy.autorizar(subject, "material.descargar", course)) throw denied();
         // Nested material lookup scoped to this course + company (RS11).
-        var material = courses.material(materialId, id, subject.empresaId()).orElseThrow(CourseService::denied);
+        var material = courses.material(materialId, id, course.empresaId()).orElseThrow(CourseService::denied);
         return new Download(material, storage.open(material.claveAlmacen()));
     }
 
@@ -321,17 +323,20 @@ public class CourseService {
         }
     }
 
-    /** Sólo el último segmento, sin caracteres de control ni comillas, acotado. */
-    static String cleanFileName(String original) {
-        if (original == null) {
-            return "archivo";
-        }
-        String name = original.substring(Math.max(original.lastIndexOf('/'), original.lastIndexOf('\\')) + 1);
+    /**
+     * Sólo el último segmento, sin caracteres de control ni comillas, acotado y con la extensión del
+     * tipo detectado por firma (R14).
+     */
+    static String cleanFileName(String original, FileType type) {
+        String name = original == null ? ""
+            : original.substring(Math.max(original.lastIndexOf('/'), original.lastIndexOf('\\')) + 1);
         name = name.replaceAll("[\\p{Cntrl}\"]", "").strip();
         if (name.isEmpty() || name.equals(".") || name.equals("..")) {
-            return "archivo";
+            name = "archivo";
         }
-        return name.length() <= MAX_NOMBRE_ARCHIVO ? name : name.substring(name.length() - MAX_NOMBRE_ARCHIVO);
+        String extension = type.missingExtension(name);
+        int max = MAX_NOMBRE_ARCHIVO - extension.length();
+        return (name.length() <= max ? name : name.substring(name.length() - max)) + extension;
     }
 
     private static void afterCommit(Runnable action) {
