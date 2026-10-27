@@ -199,7 +199,7 @@ button.danger:hover { background: #fff0eb; }
 /* RF3: catálogo */
 .catalog-filters { margin-bottom: 22px; }
 .catalog-filters .field-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.catalog-action-cell { display: grid; gap: 8px; }
+.catalog-action-cell { display: grid; gap: 8px; font-size: 14px; font-weight: 600; }
 .catalog-actions-spacer { visibility: hidden; line-height: 1.2; }
 .catalog-action-cell button { width: 100%; margin: 0; padding: 13px 12px; }
 .catalog-action-cell .secondary { margin-top: 0; }

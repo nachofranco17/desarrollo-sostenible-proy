@@ -118,14 +118,14 @@ export function CatalogList({ account }: { account: Account | null }) {
           <input type="number" min={0} max={100000} step="0.01" value={draft.costoMax ?? ''}
             onChange={(e) => setDraft({ ...draft, costoMax: e.target.value })} />
         </label>
-        <label className="catalog-action-cell">
+        <div className="catalog-action-cell">
           <span className="catalog-actions-spacer" aria-hidden="true">Aplicar</span>
           <button type="submit">Aplicar filtros</button>
-        </label>
-        <label className="catalog-action-cell">
+        </div>
+        <div className="catalog-action-cell">
           <span className="catalog-actions-spacer" aria-hidden="true">Limpiar</span>
           <button type="button" className="secondary" onClick={clear}>Limpiar filtros</button>
-        </label>
+        </div>
       </div>
     </form>
 
