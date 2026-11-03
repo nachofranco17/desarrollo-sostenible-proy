@@ -136,13 +136,22 @@ function MyAccount({ account }: { account: Account }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
-  async function deleteAccount() {
+  async function deleteAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    let password = String(new FormData(form).get('password') ?? '');
+    form.reset();
     setBusy(true); setError('');
     try {
+      await post('/auth/reauthenticate', JSON.stringify({ password }));
+      password = '';
       await del('/account');
       auth.clear(); navigate('/ingresar', { replace: true });
-    } catch { setError('No pudimos eliminar tu cuenta. Intentá nuevamente.'); }
-    finally { setBusy(false); }
+    } catch (failure) {
+      setError(failure instanceof ApiError && failure.status === 401
+        ? 'No pudimos verificar tu identidad. Revisá la contraseña y tu sesión.'
+        : 'No pudimos eliminar tu cuenta. Verificá tu acceso e intentá nuevamente.');
+    } finally { password = ''; setBusy(false); }
   }
   async function logout() {
     setBusy(true); setError('');
@@ -171,11 +180,14 @@ function MyAccount({ account }: { account: Account }) {
     {canManageCourses(account) && <Link className="button-link" to="/gestion">Gestionar cursos y proyectos</Link>}
     {account.rol === 'ADMIN' && <Link className="button-link" to="/staff">Gestionar staff</Link>}
     <button disabled={busy} onClick={verify}>Verificar acceso</button><button disabled={busy} className="secondary" onClick={logout}>Cerrar sesión</button>
-    {deleting ? <section role="dialog" aria-labelledby="delete-account-title">
+    {account.rol === 'ADMIN' ? <p className="muted">Las cuentas administradoras no pueden eliminarse desde Mi cuenta para preservar la administración de la empresa.</p> : deleting ? <section role="dialog" aria-labelledby="delete-account-title">
       <h3 id="delete-account-title">Eliminar mi cuenta</h3>
       <p>Perderás el acceso a tu cuenta en todos los dispositivos. Esta acción no se puede deshacer desde la aplicación.</p>
-      <button disabled={busy} onClick={() => void deleteAccount()}>Confirmar eliminación</button>
-      <button disabled={busy} onClick={() => setDeleting(false)}>Cancelar</button>
+      <form onSubmit={deleteAccount}>
+        <label>Confirmá tu contraseña<input name="password" type="password" autoComplete="current-password" required maxLength={128} disabled={busy} /></label>
+        <button type="submit" disabled={busy}>Confirmar eliminación</button>
+        <button type="button" disabled={busy} onClick={() => { setDeleting(false); setError(''); }}>Cancelar</button>
+      </form>
     </section> : <button disabled={busy} className="secondary" onClick={() => setDeleting(true)}>Eliminar mi cuenta</button>}
   </>;
 }

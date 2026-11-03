@@ -26,7 +26,9 @@ class PolicyMigrationTest {
         assertThat(jdbc.queryForObject("SELECT password_hash FROM usuario WHERE id = ?", String.class, admin)).isEqualTo("existing-hash");
         assertThat(jdbc.queryForObject("SELECT rol FROM membresia WHERE usuario_id = ?", String.class, admin)).isEqualTo("ADMIN");
         assertThat(jdbc.queryForObject("SELECT rol FROM membresia WHERE usuario_id = ?", String.class, member)).isNull();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)).isEqualTo(54);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM permiso", Integer.class)).isEqualTo(60);
+        assertThat(jdbc.queryForList("SELECT rol FROM permiso WHERE accion = 'cuenta.eliminar'", String.class))
+            .containsExactlyInAnyOrder("TALENTO", "RECLUTADOR", "EDITOR");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM permiso WHERE rol = 'AUTENTICADO' OR accion = 'cuenta.ver'", Integer.class)).isZero();
     }
 }

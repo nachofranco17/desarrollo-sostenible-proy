@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.8 (03/11/2026)
+Versión: 1.9 (03/11/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -36,8 +36,9 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 | `cuenta.registrar` | Registrarse como Talento | GLOBAL | — | — | — | — |
 | `sesion.iniciar` | Iniciar sesión | GLOBAL | — | — | — | — |
 | `sesion.cerrar` | Cerrar la propia sesión | — | PROPIO | PROPIO | PROPIO | PROPIO |
-| `sesion.reautenticar` | Confirmar la identidad antes de una operación sensible (R23) | — | — | PROPIO | — | — |
-| `cuenta.gestionar` | Ver, modificar configuración y eliminar la propia cuenta | — | PROPIO | PROPIO | PROPIO | PROPIO |
+| `sesion.reautenticar` | Confirmar la identidad antes de una operación sensible (R23) | — | PROPIO | PROPIO | PROPIO | PROPIO |
+| `cuenta.gestionar` | Ver la propia cuenta (modificar configuración queda previsto) | — | PROPIO | PROPIO | PROPIO | PROPIO |
+| `cuenta.eliminar` | Eliminar la propia cuenta con reautenticación; autoeliminación del Admin prohibida | — | PROPIO | — | PROPIO | PROPIO |
 | `perfil.gestionar` | Ver y modificar el propio perfil | — | PROPIO | — | — | — |
 | `perfil.ver_postulante` | Ver el perfil de un postulante | — | — | POSTULANTE | POSTULANTE | — |
 | `catalogo.ver` | Buscar y ver cursos/proyectos publicados | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO |
@@ -89,10 +90,13 @@ Son reglas que no se expresan como alcance. Viven en el evaluador, asociadas a l
 | Cualquier acción autenticada | La cuenta del sujeto está activa. |
 | Cualquier acción de staff | La membresía del sujeto está activa y tiene un rol asignado. |
 | `staff.cambiar_rol`, `staff.dar_baja` | La membresía objetivo no es la del sujeto, y el sujeto se reautenticó (R23). |
+| `cuenta.eliminar` | Solo la propia cuenta, con prueba de reautenticación vigente en la misma sesión. El Admin no puede autoeliminarse, aunque exista otro administrador o se le asigne accidentalmente el permiso. |
 | `postulacion.cambiar_estado` | La transición está entre las permitidas (ver restricciones de campo). |
 | `perfil.ver_postulante` | El teléfono solo se incluye si la postulación está en Preseleccionada o Seleccionada. |
 
 El límite de 20 respuestas por minuto de `entregable.responder` no es una regla de autorización. Se aplica en el endpoint, con Bucket4j.
+
+`DELETE /api/account` declara `cuenta.eliminar`, separada de `cuenta.gestionar` para que leer la cuenta no requiera reautenticación. La migración V11 agrega eliminación y reautenticación para Talento, Reclutador y Editor; mantiene la reautenticación del Admin para las operaciones de staff. No modifica migraciones anteriores. La baja lógica y la invalidación de sesión solo ocurren después de autorizar la eliminación. Ver [RS23](rs23-sesiones-administrativas.md).
 
 ## 5. El sujeto
 

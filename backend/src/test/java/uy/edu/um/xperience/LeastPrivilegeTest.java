@@ -19,7 +19,7 @@ class LeastPrivilegeTest {
     /** Acciones de la matriz documentada; GET /api/account usa cuenta.gestionar. */
     private static final Map<String, Set<String>> MATRIZ = Map.of(
         "VISITANTE", Set.of("cuenta.registrar", "sesion.iniciar", "catalogo.ver"),
-        "TALENTO", Set.of("sesion.cerrar", "cuenta.gestionar", "perfil.gestionar", "catalogo.ver",
+        "TALENTO", Set.of("sesion.cerrar", "sesion.reautenticar", "cuenta.gestionar", "cuenta.eliminar", "perfil.gestionar", "catalogo.ver",
             "material.descargar", "inscripcion.crear", "inscripcion.ver", "leccion.completar",
             "entregable.responder", "oferta.ver", "postulacion.crear", "postulacion.ver",
             "curriculum.subir", "curriculum.descargar"),
@@ -28,10 +28,10 @@ class LeastPrivilegeTest {
             "material.descargar", "inscripcion.ver_inscriptos", "oferta.ver", "oferta.gestionar",
             "postulacion.ver_listado", "postulacion.cambiar_estado", "curriculum.descargar",
             "staff.invitar", "staff.cambiar_rol", "staff.dar_baja", "staff.ver"),
-        "RECLUTADOR", Set.of("sesion.cerrar", "cuenta.gestionar", "perfil.ver_postulante",
+        "RECLUTADOR", Set.of("sesion.cerrar", "sesion.reautenticar", "cuenta.gestionar", "cuenta.eliminar", "perfil.ver_postulante",
             "catalogo.ver", "oferta.ver", "oferta.gestionar", "postulacion.ver_listado",
             "postulacion.cambiar_estado", "curriculum.descargar"),
-        "EDITOR", Set.of("sesion.cerrar", "cuenta.gestionar", "catalogo.ver", "curso.gestionar",
+        "EDITOR", Set.of("sesion.cerrar", "sesion.reautenticar", "cuenta.gestionar", "cuenta.eliminar", "catalogo.ver", "curso.gestionar",
             "curso.ver_borrador", "material.subir", "material.descargar", "inscripcion.ver_inscriptos",
             "oferta.ver"));
 

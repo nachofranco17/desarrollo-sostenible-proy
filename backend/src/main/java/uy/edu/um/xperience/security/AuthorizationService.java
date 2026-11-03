@@ -42,6 +42,8 @@ public class AuthorizationService implements EvaluadorPolitica {
     }
     private List<Permiso> permisos(Sujeto s, String action) {
         if (action == null || !vigente(s) || s.rol() == null) return List.of();
+        // An admin cannot disable their own account, even if a grant is added by mistake.
+        if ("cuenta.eliminar".equals(action) && s.rol() == Sujeto.Rol.ADMIN) return List.of();
         return permissions.findByRolAndAccion(s.rol().name(), action);
     }
     @Override public boolean puedeInvocar(Sujeto s, String action) {
@@ -49,6 +51,9 @@ public class AuthorizationService implements EvaluadorPolitica {
         catch (RuntimeException error) { falla("puedeInvocar", action, error); return false; }
     }
     private boolean sensitive(String action) {
+        return staffChange(action) || "cuenta.eliminar".equals(action);
+    }
+    private boolean staffChange(String action) {
         return "staff.cambiar_rol".equals(action) || "staff.dar_baja".equals(action);
     }
     private ResourceAccess attributes(Object resource) {
@@ -108,8 +113,8 @@ public class AuthorizationService implements EvaluadorPolitica {
             var grants = permisos(s, action);
             if (grants.isEmpty()) return false;
             var a = attributes(resource);
-            if (sensitive(action) && (a == null || a.ownerId() == null || a.ownerId().equals(s.usuarioId())
-                    || !reauthentication.valid(s))) return false;
+            if (sensitive(action) && !reauthentication.valid(s)) return false;
+            if (staffChange(action) && (a == null || a.ownerId() == null || a.ownerId().equals(s.usuarioId()))) return false;
             if ("postulacion.cambiar_estado".equals(action)
                     && (!(resource instanceof TransicionPostulacion p) || !p.permitida())) return false;
             return grants.stream().anyMatch(p -> switch (p.alcance) {
@@ -131,7 +136,7 @@ public class AuthorizationService implements EvaluadorPolitica {
                     && grants.stream().anyMatch(p -> "ORG".equals(p.alcance))) {
                 return (root, query, cb) -> cb.equal(root.get("empresaId"), s.empresaId());
             }
-            if (type == Usuario.class && Set.of("cuenta.gestionar", "sesion.reautenticar").contains(action)
+            if (type == Usuario.class && Set.of("cuenta.gestionar", "cuenta.eliminar", "sesion.reautenticar").contains(action)
                     && grants.stream().anyMatch(p -> "PROPIO".equals(p.alcance))) {
                 return (root, query, cb) -> cb.and(cb.equal(root.get("id"), s.usuarioId()), cb.isTrue(root.get("activo")));
             }
@@ -139,7 +144,7 @@ public class AuthorizationService implements EvaluadorPolitica {
                     && grants.stream().anyMatch(p -> "PROPIO".equals(p.alcance))) {
                 return (root, query, cb) -> cb.equal(root.get("id"), s.empresaId());
             }
-            if (type == Membresia.class && sensitive(action) && s.empresaId() != null
+            if (type == Membresia.class && staffChange(action) && s.empresaId() != null
                     && grants.stream().anyMatch(p -> "ORG".equals(p.alcance))) {
                 return (root, query, cb) -> cb.and(cb.equal(root.get("empresaId"), s.empresaId()),
                     cb.notEqual(root.get("usuarioId"), s.usuarioId()), cb.equal(root.get("estado"), "ACTIVA"));

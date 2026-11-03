@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PolicyContractTest {
     @Autowired MockMvc mvc;
     @Autowired AuthorizationService policy;
+    @Autowired ProtectedAccounts protectedAccounts;
     @Autowired PolicyEnforcementPoint pep;
     @Autowired Denegaciones denials;
     @MockitoSpyBean Sujetos subjects;
@@ -335,6 +336,34 @@ class PolicyContractTest {
         assertThat(policy.autorizar(talent, "oferta.ver", draft)).isFalse();
         assertThat(policy.camposEscribibles(talent, "oferta.gestionar", draft)).isEmpty();
     }
+    @Test void accountDeletionDeniesInvalidProofsEvenWhenTheServiceIsCalledDirectly() {
+        UUID id = accounts.create(UUID.randomUUID() + "@example.test", "Cuenta", "Prueba", "unused-hash", "TALENTO");
+        var subject = Sujeto.from(accounts.byId(id).orElseThrow());
+        var request = new MockHttpServletRequest();
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+        try {
+            assertThatThrownBy(() -> protectedAccounts.delete(subject))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+            for (var proof : List.of(
+                    new Reautenticacion.Proof(id, null, subject.rol(), Instant.now().minusSeconds(301)),
+                    new Reautenticacion.Proof(id, null, subject.rol(), Instant.now().plusSeconds(60)),
+                    new Reautenticacion.Proof(UUID.randomUUID(), null, subject.rol(), Instant.now()),
+                    new Reautenticacion.Proof(id, UUID.randomUUID(), subject.rol(), Instant.now()),
+                    new Reautenticacion.Proof(id, null, Sujeto.Rol.ADMIN, Instant.now()))) {
+                request.getSession().setAttribute(Reautenticacion.KEY, proof);
+                assertThat(policy.autorizar(subject, "cuenta.eliminar", ResourceAccess.own(id))).isFalse();
+                assertThatThrownBy(() -> protectedAccounts.delete(subject))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+                assertThat(accounts.byId(id).orElseThrow().activo()).isTrue();
+            }
+            request.getSession().setAttribute(Reautenticacion.KEY,
+                new Reautenticacion.Proof(id, null, subject.rol(), Instant.now()));
+            assertThat(policy.autorizar(subject, "cuenta.eliminar", ResourceAccess.own(UUID.randomUUID()))).isFalse();
+            protectedAccounts.delete(subject);
+            assertThat(accounts.byId(id).orElseThrow().activo()).isFalse();
+        } finally { RequestContextHolder.resetRequestAttributes(); }
+    }
+
     @Test void persistedPermissionsMatchTheDocumentedMatrixExactly() throws Exception {
         var expected = new HashSet<String>();
         var roles = List.of("VISITANTE", "TALENTO", "ADMIN", "RECLUTADOR", "EDITOR");
@@ -348,7 +377,7 @@ class PolicyContractTest {
                 if (scopes.contains(scope)) expected.add(roles.get(i) + ":" + action + ":" + scope);
             }
         }
-        assertThat(expected).hasSize(54);
+        assertThat(expected).hasSize(60);
         assertThat(permissions.findAll()).map(p -> p.rol + ":" + p.accion + ":" + p.alcance).containsExactlyInAnyOrderElementsOf(expected);
     }
 }

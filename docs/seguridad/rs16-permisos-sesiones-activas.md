@@ -6,9 +6,9 @@ No existe un caché de permisos entre solicitudes ni un TTL de autorización. Lo
 
 - **Cambio de rol:** se conserva la sesión y se aplican los permisos nuevos, tanto los otorgados como los retirados.
 - **Baja del staff:** se marca la membresía `BAJA`. La siguiente solicitud protegida devuelve 403 e invalida esa sesión; reutilizar su cookie devuelve 401. Esto se aplica a cada sesión abierta del miembro.
-- **Eliminación de cuenta:** `DELETE /api/account`, con CSRF, elimina lógicamente la propia cuenta (`usuario.activo=false`) y cierra la sesión que hizo la operación. Las demás sesiones pierden acceso en su siguiente solicitud protegida, igual que en la baja. Se preservan los datos relacionados; esta operación no borra físicamente los registros ni permite eliminar cuentas ajenas.
+- **Eliminación de cuenta:** `DELETE /api/account`, con CSRF y reautenticación vigente en la misma sesión, elimina lógicamente la propia cuenta (`usuario.activo=false`) y cierra la sesión que hizo la operación. Solo está disponible para Talento, Reclutador y Editor; el Admin no puede autoeliminarse, conforme a [RS23](rs23-sesiones-administrativas.md). Las demás sesiones pierden acceso en su siguiente solicitud protegida, igual que en la baja. Se preservan los datos relacionados; esta operación no borra físicamente los registros ni permite eliminar cuentas ajenas.
 
-La pantalla **Mi cuenta → Eliminar mi cuenta** pide confirmar. Cancelar no envía la eliminación. Una pantalla que ya está visible puede conservar datos previamente recibidos; el servidor valida los permisos al recibir cada nueva solicitud.
+La pantalla **Mi cuenta → Eliminar mi cuenta** pide confirmar con la contraseña. Cancelar o ingresar una contraseña incorrecta no envía la eliminación. Una pantalla que ya está visible puede conservar datos previamente recibidos; el servidor valida los permisos al recibir cada nueva solicitud.
 
 ## Prueba manual
 

@@ -39,8 +39,8 @@ public class ProtectedAccounts {
     }
     @Transactional
     public void delete(Sujeto subject) {
-        var user = read(subject, "cuenta.gestionar");
-        if (!policy.autorizar(subject, "cuenta.gestionar", user)) {
+        var user = read(subject, "cuenta.eliminar");
+        if (!policy.autorizar(subject, "cuenta.eliminar", user)) {
             throw new AccessDeniedException("Acceso denegado");
         }
         // Logical deletion preserves references and revokes every session on its next request.

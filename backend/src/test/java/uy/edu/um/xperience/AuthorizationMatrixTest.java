@@ -12,11 +12,13 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import uy.edu.um.xperience.account.AccountRepository;
 import uy.edu.um.xperience.application.JobApplication;
 import uy.edu.um.xperience.course.Course;
@@ -30,23 +32,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AuthorizationMatrixTest {
     private static final List<String> ROLES = List.of("VISITANTE", "TALENTO", "ADMIN", "RECLUTADOR", "EDITOR");
-    private static final Set<String> SESSION_ACTIONS = Set.of("sesion.iniciar", "sesion.cerrar", "sesion.reautenticar");
-    // En el mismo orden que las 24 filas de SEG-R1. Una fila puede contener dos operaciones.
-    private static final List<List<String>> R1_ACTIONS = List.of(
-        List.of("cuenta.registrar"), List.of("cuenta.gestionar"), List.of("perfil.gestionar"),
-        List.of("perfil.ver_postulante"), List.of("catalogo.ver"), List.of("curso.gestionar"),
-        List.of("curso.ver_borrador"), List.of("material.subir"), List.of("material.descargar"),
-        List.of("inscripcion.crear"), List.of("inscripcion.ver"), List.of("leccion.completar"),
-        List.of("entregable.responder"), List.of("inscripcion.ver_inscriptos"), List.of("oferta.ver"),
-        List.of("oferta.gestionar"), List.of("postulacion.crear"), List.of("postulacion.ver"),
-        List.of("postulacion.ver_listado", "postulacion.cambiar_estado"), List.of("curriculum.subir"),
-        List.of("curriculum.descargar"), List.of("staff.invitar"),
-        List.of("staff.cambiar_rol", "staff.dar_baja"), List.of("staff.ver"));
     record Decision(String role, String action, String scope) {}
     @Autowired AuthorizationService policy;
     @Autowired AccountRepository accounts;
     @Autowired CourseRepository courses;
     @Autowired JdbcTemplate jdbc;
+    @Autowired @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping mapping;
     private final Map<String, Sujeto> subjects = new HashMap<>();
     private UUID company;
     private UUID otherCompany;
@@ -136,28 +127,59 @@ class AuthorizationMatrixTest {
             .split("## Matriz\\R", 2)[1].split("### Alcances", 2)[0].lines()
             .map(line -> line.split("\\|", -1)).filter(c -> c.length == 9)
             .filter(c -> !Set.of("Recurso", "---").contains(c[1].strip())).toList();
-        assertThat(lines).hasSize(R1_ACTIONS.size());
-        var expected = new HashSet<Decision>();
-        for (int row = 0; row < lines.size(); row++) {
-            for (String action : R1_ACTIONS.get(row)) for (int role = 0; role < ROLES.size(); role++) {
-                String cell = lines.get(row)[role + 3].strip();
-                String scope = switch (cell) {
-                    case "propio", "propia", "propias" -> "PROPIO";
-                    case "org", "org (+R23)" -> "ORG";
-                    case "postul." -> "POSTULANTE";
-                    case "inscripto" -> "INSCRIPTO";
-                    case "✓" -> "cuenta.registrar".equals(action) ? "GLOBAL" : "PUBLICADO";
-                    case "—" -> "—";
-                    default -> throw new AssertionError("Símbolo de SEG-R1 sin cobertura: " + cell);
-                };
-                expected.add(new Decision(ROLES.get(role), action, scope));
+        var actions = new HashMap<String, String>();
+        mapping.getHandlerMethods().forEach((info, handler) -> {
+            var action = handler.getMethodAnnotation(RequiereAccion.class);
+            if (action == null) return;
+            for (String path : info.getPatternValues()) for (var method : info.getMethodsCondition().getMethods()) {
+                actions.put(method.name() + " " + path, action.value());
+            }
+        });
+        actions.put("POST /api/auth/login", "sesion.iniciar");
+        actions.put("POST /api/auth/logout", "sesion.cerrar");
+        var documented = new HashSet<String>();
+        var endpointPattern = java.util.regex.Pattern.compile("`((?:GET|POST|PUT|PATCH|DELETE) /[^`]+)`");
+        for (var columns : lines) {
+            var endpoint = endpointPattern.matcher(columns[2]);
+            assertThat(endpoint.find()).as("fila con método y ruta: %s", columns[2]).isTrue();
+            String route = endpoint.group(1), action = actions.get(route);
+            assertThat(documented.add(route)).as("endpoint sin duplicados: %s", route).isTrue();
+            assertThat(action).as("endpoint implementado: %s", route).isNotNull();
+            for (int role = 0; role < ROLES.size(); role++) {
+                String cell = columns[role + 3].strip();
+                String expected;
+                if ("sesion.token_csrf".equals(action)) expected = "propia";
+                else if ("invitacion.aceptar".equals(action)) expected = "token";
+                else if ("demo.permiso_asignable".equals(action)) expected = "—";
+                else {
+                    String consumer = ROLES.get(role);
+                    String scope = matrix().stream().filter(d -> consumer.equals(d.role()) && action.equals(d.action()))
+                        .findFirst().orElseThrow().scope();
+                    // The shared CV action has distinct own and applicant endpoints.
+                    if ("curriculum.descargar".equals(action)
+                            && ((route.startsWith("GET /api/profile/") && !"PROPIO".equals(scope))
+                                || (route.startsWith("GET /api/company/") && !"POSTULANTE".equals(scope)))) scope = "—";
+                    expected = switch (scope) {
+                        case "PROPIO" -> "propio";
+                        case "ORG" -> "org";
+                        case "POSTULANTE" -> "postul.";
+                        case "INSCRIPTO" -> "inscripto";
+                        case "GLOBAL", "PUBLICADO" -> "✓";
+                        case "—" -> "—";
+                        default -> throw new AssertionError("Alcance sin cobertura: " + scope);
+                    };
+                    cell = cell.replace(" (+R23)", "").replaceAll("^propi[oa]s?$", "propio");
+                    if (!"—".equals(expected) && Set.of("cuenta.eliminar", "staff.cambiar_rol", "staff.dar_baja").contains(action)) {
+                        assertThat(columns[role + 3]).as("reautenticación documentada: %s", route).contains("(+R23)");
+                    }
+                }
+                assertThat(cell).as("%s para %s", route, ROLES.get(role)).isEqualTo(expected);
             }
         }
-        assertThat(matrix()).hasSize(145).doesNotHaveDuplicates();
-        assertThat(matrix().stream().filter(d -> !SESSION_ACTIONS.contains(d.action())).toList())
-            .containsExactlyInAnyOrderElementsOf(expected);
-        assertThat(grants().count()).isEqualTo(54);
-        assertThat(forbidden().count()).isEqualTo(91);
+        assertThat(documented).containsExactlyInAnyOrderElementsOf(actions.keySet());
+        assertThat(matrix()).hasSize(150).doesNotHaveDuplicates();
+        assertThat(grants().count()).isEqualTo(60);
+        assertThat(forbidden().count()).isEqualTo(90);
     }
 
     @ParameterizedTest(name = "permitido {0}") @MethodSource("grants")

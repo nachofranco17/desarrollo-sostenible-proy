@@ -1,20 +1,20 @@
 # RS20 — Pruebas automatizadas de autorización
 
-Fecha: 15/10/2026. Referencia: [SEG-R1](matriz-control-acceso.md) y su [traducción a acciones y alcances](modelo-autorizacion.md).
+Fecha: 03/11/2026. Referencia: [SEG-R1](matriz-control-acceso.md) y su [traducción a acciones y alcances](modelo-autorizacion.md).
 
 ## Cobertura de la matriz
 
-`AuthorizationMatrixTest` lee la tabla del modelo como oráculo independiente del evaluador y de la tabla de permisos. Además contrasta sus celdas con las 24 filas de SEG-R1 y los cinco consumidores. Las operaciones agrupadas de SEG-R1 se separan en acciones; se agregan las tres acciones de sesión documentadas en el modelo.
+`AuthorizationMatrixTest` lee la tabla del modelo como oráculo independiente del evaluador y de la tabla de permisos. Además contrasta las 52 filas de endpoints de SEG-R1 y sus cinco consumidores con las rutas registradas por Spring y los dos endpoints de filtros de sesión. Comprueba que no falten ni se dupliquen métodos/rutas y valida las condiciones particulares de CSRF, invitaciones, demo y CV propio frente a CV de postulantes. Las operaciones sensibles deben incluir la marca de reautenticación en la matriz. Las operaciones previstas sin endpoint se mantienen en el catálogo de acciones para evaluar sus permisos.
 
 | Comprobación | Ejecuciones | Caso de prueba |
 |---|---:|---|
-| Permiso concedido, recurso y relación válidos | 54 | `everyGrantedCombinationHasAPositiveCase` |
-| Mismo permiso, recurso fuera de alcance y recurso ausente | 54 | `everyGrantedCombinationHasANegativeCase` |
-| Rol sin permiso, incluso con atributos favorables del recurso | 91 | `everyForbiddenRoleActionIsDeniedEvenWithFavorableResourceAttributes` |
+| Permiso concedido, recurso y relación válidos | 60 | `everyGrantedCombinationHasAPositiveCase` |
+| Mismo permiso, recurso fuera de alcance y recurso ausente | 60 | `everyGrantedCombinationHasANegativeCase` |
+| Rol sin permiso, incluso con atributos favorables del recurso | 90 | `everyForbiddenRoleActionIsDeniedEvenWithFavorableResourceAttributes` |
 | SEG-R1 coincide con la traducción, sin filas o consumidores omitidos | 1 | `actionTranslationCoversEveryR1RowAndEveryConsumerWithoutChangingItsMeaning` |
 | Inscripción real; acceso tras baja; revocación y banderas falsas | 1 | `enrollmentIsPersistedAndSurvivesWithdrawalButCannotBeForged` |
 | Cambio de rol y baja invalidan el sujeto anterior | 1 | `membershipChangesInvalidateThePreviouslyResolvedSubjectImmediately` |
-| **Total** | **202** | **145 combinaciones de rol y acción** |
+| **Total** | **213** | **150 combinaciones de rol y acción** |
 
 Cada celda con permiso tiene un positivo y un negativo de instancia. Una celda denegada se comprueba como denegada; el acceso positivo al mismo recurso se prueba con los consumidores que sí tienen permiso. No se inventa una excepción positiva para un rol al que SEG-R1 prohíbe siempre esa acción.
 
@@ -29,8 +29,9 @@ En cada celda distinta de — se ejecutan los dos métodos de permiso concedido;
 | `cuenta.registrar` | Registrarse como Talento | GLOBAL | — | — | — | — |
 | `sesion.iniciar` | Iniciar sesión | GLOBAL | — | — | — | — |
 | `sesion.cerrar` | Cerrar la propia sesión | — | PROPIO | PROPIO | PROPIO | PROPIO |
-| `sesion.reautenticar` | Confirmar la identidad antes de una operación sensible (R23) | — | — | PROPIO | — | — |
-| `cuenta.gestionar` | Ver, modificar configuración y eliminar la propia cuenta | — | PROPIO | PROPIO | PROPIO | PROPIO |
+| `sesion.reautenticar` | Confirmar la identidad antes de una operación sensible (R23) | — | PROPIO | PROPIO | PROPIO | PROPIO |
+| `cuenta.gestionar` | Ver la propia cuenta (modificar configuración queda previsto) | — | PROPIO | PROPIO | PROPIO | PROPIO |
+| `cuenta.eliminar` | Eliminar la propia cuenta con reautenticación; autoeliminación del Admin prohibida | — | PROPIO | — | PROPIO | PROPIO |
 | `perfil.gestionar` | Ver y modificar el propio perfil | — | PROPIO | — | — | — |
 | `perfil.ver_postulante` | Ver el perfil de un postulante | — | — | POSTULANTE | POSTULANTE | — |
 | `catalogo.ver` | Buscar y ver cursos/proyectos publicados | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO |
@@ -39,18 +40,18 @@ En cada celda distinta de — se ejecutan los dos métodos de permiso concedido;
 | `material.subir` | Subir, reemplazar o eliminar material | — | — | ORG | — | ORG |
 | `material.descargar` | Descargar material | — | INSCRIPTO | ORG | — | ORG |
 | `inscripcion.crear` | Inscribirse a un curso/proyecto | — | PUBLICADO | — | — | — |
-| `inscripcion.ver` | Ver su inscripción y avance | — | PROPIO | — | — | — |
+| `inscripcion.ver` | Ver su inscripción y avance; actualizar su porcentaje de avance | — | PROPIO | — | — | — |
 | `leccion.completar` | Marcar una lección como completada | — | INSCRIPTO | — | — | — |
 | `entregable.responder` | Enviar respuesta a un entregable | — | INSCRIPTO | — | — | — |
 | `inscripcion.ver_inscriptos` | Ver inscriptos y su avance | — | — | ORG | — | ORG |
 | `oferta.ver` | Ver ofertas publicadas | — | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO |
-| `oferta.gestionar` | Crear, modificar, cerrar y ver borradores | — | — | ORG | ORG | — |
+| `oferta.gestionar` | Crear, modificar y publicar borradores; listar y ver ofertas de la empresa | — | — | ORG | ORG | — |
 | `postulacion.crear` | Postularse a una oferta | — | PUBLICADO | — | — | — |
 | `postulacion.ver` | Ver sus postulaciones y su estado | — | PROPIO | — | — | — |
 | `postulacion.ver_listado` | Ver el listado de postulantes | — | — | ORG | ORG | — |
 | `postulacion.cambiar_estado` | Cambiar el estado de una postulación | — | — | ORG | ORG | — |
 | `curriculum.subir` | Subir o reemplazar el currículum | — | PROPIO | — | — | — |
-| `curriculum.descargar` | Descargar un currículum | — | PROPIO | POSTULANTE | POSTULANTE | — |
+| `curriculum.descargar` | Consultar metadatos del propio currículum o descargar un currículum | — | PROPIO | POSTULANTE | POSTULANTE | — |
 | `staff.invitar` | Invitar un usuario al staff | — | — | ORG | — | — |
 | `staff.cambiar_rol` | Cambiar el rol de un miembro | — | — | ORG | — | — |
 | `staff.dar_baja` | Dar de baja a un miembro | — | — | ORG | — | — |

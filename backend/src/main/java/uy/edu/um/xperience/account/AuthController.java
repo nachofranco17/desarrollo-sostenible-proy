@@ -38,7 +38,7 @@ public class AuthController {
     @RequiereAccion("cuenta.gestionar")
     public AccountView current() { return accounts.view(subjects.current()); }
     @DeleteMapping("/account")
-    @RequiereAccion("cuenta.gestionar")
+    @RequiereAccion("cuenta.eliminar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(jakarta.servlet.http.HttpServletRequest request) {
         accounts.delete(subjects.current());

@@ -253,7 +253,7 @@ class AuthIntegrationTest {
         var talent = accounts.byEmail(email).orElseThrow();
         assertThat(browser.login(email, PASSWORD).statusCode()).isEqualTo(204);
         assertThat(jdbc.queryForList("SELECT accion FROM permiso WHERE rol = 'TALENTO'", String.class))
-            .containsExactlyInAnyOrder("sesion.cerrar", "cuenta.gestionar", "perfil.gestionar", "catalogo.ver",
+            .containsExactlyInAnyOrder("sesion.cerrar", "sesion.reautenticar", "cuenta.gestionar", "cuenta.eliminar", "perfil.gestionar", "catalogo.ver",
                 "material.descargar", "inscripcion.crear", "inscripcion.ver", "leccion.completar", "entregable.responder",
                 "oferta.ver", "postulacion.crear", "postulacion.ver", "curriculum.subir", "curriculum.descargar");
         for (String action : List.of("catalogo.ver", "inscripcion.crear", "postulacion.crear")) {
@@ -357,7 +357,7 @@ class AuthIntegrationTest {
     }
 
     @Test
-    void reauthenticationRequiresTheCurrentPasswordAndIsReservedForAdmins() throws Exception {
+    void reauthenticationRequiresTheCurrentPasswordAndDoesNotGrantStaffPermissions() throws Exception {
         var company = company(); var member = acceptedStaff(company.companyId());
         var admin = new Browser(); admin.login(company.admin().correo(), PASSWORD);
         String route = "/staff/" + member.id() + "/rol";
@@ -369,7 +369,8 @@ class AuthIntegrationTest {
         assertThat(admin.patch(route, payload, true).statusCode()).isEqualTo(403);
         assertThat(accounts.byId(member.id()).orElseThrow().rol()).isNull();
         var talent = new Browser(); String email = email(); talent.register(email); talent.login(email, PASSWORD);
-        assertThat(talent.reauthenticate(PASSWORD).statusCode()).isEqualTo(403);
+        assertThat(talent.reauthenticate(PASSWORD).statusCode()).isEqualTo(204);
+        assertThat(talent.patch(route, payload, true).statusCode()).isEqualTo(403);
     }
 
     private record CompanyFixture(UUID companyId, Account admin) {}
@@ -420,6 +421,7 @@ class AuthIntegrationTest {
         assertThat(second.get("/account").statusCode()).isEqualTo(200);
         assertThat(first.write("DELETE", "/account", "", "application/json", false).statusCode()).isEqualTo(403);
         assertThat(accounts.byId(member.id()).orElseThrow().activo()).isTrue();
+        assertThat(first.reauthenticate(PASSWORD).statusCode()).isEqualTo(204);
         assertThat(first.write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(204);
         assertThat(accounts.byId(member.id()).orElseThrow().activo()).isFalse();
         assertThat(replay(firstCookie).statusCode()).isEqualTo(401);
@@ -428,6 +430,56 @@ class AuthIntegrationTest {
         assertThat(new Browser().login(member.correo(), PASSWORD).statusCode()).isEqualTo(401);
         assertThat(accounts.byId(company.admin().id()).orElseThrow().activo()).isTrue();
         assertThat(new Browser().write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(401);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void rs23AdminCannotDeleteTheirOwnAccountEvenAfterReauthentication(boolean anotherAdmin) throws Exception {
+        var company = company();
+        if (anotherAdmin) {
+            var member = acceptedStaff(company.companyId());
+            jdbc.update("UPDATE membresia SET rol = 'ADMIN' WHERE usuario_id = ?", member.id());
+        }
+        var admin = new Browser();
+        assertThat(admin.login(company.admin().correo(), PASSWORD).statusCode()).isEqualTo(204);
+        assertThat(admin.write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(403);
+        assertThat(admin.reauthenticate(PASSWORD).statusCode()).isEqualTo(204);
+        assertThat(admin.write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(403);
+        assertThat(accounts.byId(company.admin().id()).orElseThrow().activo()).isTrue();
+        assertThat(admin.get("/account").statusCode()).isEqualTo(200);
+        assertThat(admin.get("/staff").statusCode()).isEqualTo(200);
+        assertThat(new Browser().login(company.admin().correo(), PASSWORD).statusCode()).isEqualTo(204);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TALENTO", "RECLUTADOR", "EDITOR"})
+    void rs23AccountDeletionRequiresThePasswordAndProofFromTheSameSession(String role) throws Exception {
+        var first = new Browser();
+        String email;
+        if ("TALENTO".equals(role)) {
+            email = email();
+            assertThat(first.register(email).statusCode()).isEqualTo(202);
+        } else {
+            var company = company(); var member = acceptedStaff(company.companyId());
+            jdbc.update("UPDATE membresia SET rol = ? WHERE usuario_id = ?", role, member.id());
+            email = member.correo();
+        }
+        assertThat(first.login(email, PASSWORD).statusCode()).isEqualTo(204);
+        var second = new Browser();
+        assertThat(second.login(email, PASSWORD).statusCode()).isEqualTo(204);
+        assertThat(first.get("/account").statusCode()).isEqualTo(200);
+        assertThat(first.write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(403);
+        assertThat(first.reauthenticate("incorrecta").statusCode()).isEqualTo(401);
+        assertThat(first.write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(403);
+        assertThat(accounts.byEmail(email).orElseThrow().activo()).isTrue();
+        assertThat(first.reauthenticate(PASSWORD).statusCode()).isEqualTo(204);
+        assertThat(second.write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(403);
+        assertThat(first.write("DELETE", "/account", "", "application/json", false).statusCode()).isEqualTo(403);
+        assertThat(first.write("DELETE", "/account", "", "application/json", true).statusCode()).isEqualTo(204);
+        assertThat(accounts.byEmail(email).orElseThrow().activo()).isFalse();
+        assertThat(first.get("/account").statusCode()).isEqualTo(401);
+        assertThat(second.get("/account").statusCode()).isEqualTo(403);
+        assertThat(new Browser().login(email, PASSWORD).statusCode()).isEqualTo(401);
     }
 
     @Test

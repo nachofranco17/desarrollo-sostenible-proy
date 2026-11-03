@@ -1,5 +1,22 @@
 import { test, expect } from '@playwright/test';
 
+test('RS23: Mi cuenta no ofrece autoeliminación al administrador', async ({ page }) => {
+  const writes: string[] = [];
+  await page.route('**/api/**', async route => {
+    const request = route.request();
+    if (request.method() !== 'GET') writes.push(request.url());
+    if (new URL(request.url()).pathname === '/api/account') {
+      return route.fulfill({ json: { id: 'admin', nombre: 'Admin', apellido: 'Prueba', rol: 'ADMIN', tipoCuenta: 'STAFF' } });
+    }
+    return route.fulfill({ status: 404 });
+  });
+  await page.goto('/mi-cuenta');
+  await expect(page.getByText('Las cuentas administradoras no pueden eliminarse', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Eliminar mi cuenta', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Gestionar staff', exact: true })).toBeVisible();
+  expect(writes).toEqual([]);
+});
+
 test('RS23: cada operación pide contraseña y cancelar no modifica el staff', async ({ page }) => {
   const member = { usuarioId: 'member', empresaId: 'company', correo: 'staff@example.test', nombre: 'Staff', apellido: 'Prueba', rol: 'EDITOR', estado: 'ACTIVA' };
   const writes: string[] = [];

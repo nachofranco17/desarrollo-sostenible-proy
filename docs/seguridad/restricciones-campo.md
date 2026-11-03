@@ -1,7 +1,7 @@
 # Restricciones de acceso a nivel de campo
 
 Requerimiento de seguridad: **R2** (ASVS v5.0.0-8.1.2)
-Versión: 1.2 (06/10/2026)
+Versión: 1.3 (03/11/2026)
 
 Este documento extiende la [matriz de control de acceso](matriz-control-acceso.md) al nivel de campo, para las entidades que combinan datos de distinta sensibilidad. Define qué campos puede leer y cuáles puede modificar cada consumidor. Su implementación corresponde a R12.
 
@@ -118,6 +118,8 @@ La consulta propia devuelve id, oferta, nombre de empresa, estado y fecha. El li
 | Token de invitación | — | — |
 
 El Admin no puede modificar el rol ni el estado de su propia membresía. Como las empresas las da de alta el equipo de desarrollo, esta restricción evita que una empresa quede sin nadie que la administre.
+
+La misma restricción incluye la baja lógica de la propia cuenta mediante `DELETE /api/account`: se deniega al Admin incluso con reautenticación y aunque haya otros administradores. Talento, Reclutador y Editor pueden eliminar únicamente su propia cuenta mediante `cuenta.eliminar`, con reautenticación vigente en la misma sesión. Ver [RS23](rs23-sesiones-administrativas.md).
 
 ## Decisiones de diseño
 

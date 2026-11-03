@@ -1,7 +1,7 @@
 # Matriz de control de acceso
 
 Requerimiento de seguridad: **RS1** (R1, ASVS v5.0.0-8.1.1)
-Versión: 1.3 (03/11/2026)
+Versión: 1.4 (03/11/2026)
 
 Este documento define, para cada tipo de consumidor, qué operaciones puede invocar y sobre qué conjunto de datos. Toda decisión de autorización de la plataforma debe poder contrastarse contra esta matriz. Es además la base para cargar los permisos del modelo de autorización (R4, ver [modelo-autorizacion.md](modelo-autorizacion.md)), para los conjuntos de operaciones por rol (R9) y para los casos de prueba de autorización (R20).
 
@@ -26,10 +26,10 @@ Cada fila corresponde a una combinación de método HTTP y endpoint implementado
 | Cuenta | Registrarse como Talento: `POST /api/auth/register` | ✓ | — | — | — | — |
 | Sesión | Iniciar sesión: `POST /api/auth/login` | ✓ | — | — | — | — |
 | Sesión | Cerrar la propia sesión: `POST /api/auth/logout` | — | propia | propia | propia | propia |
-| Sesión | Reautenticarse con la contraseña de la propia cuenta: `POST /api/auth/reauthenticate` | — | — | propia | — | — |
+| Sesión | Reautenticarse con la contraseña de la propia cuenta: `POST /api/auth/reauthenticate` | — | propia | propia | propia | propia |
 | Sesión | Obtener el token CSRF de la propia sesión: `GET /api/auth/csrf` | propia | propia | propia | propia | propia |
 | Cuenta | Ver la propia cuenta: `GET /api/account` | — | propia | propia | propia | propia |
-| Cuenta | Eliminar la propia cuenta (baja lógica): `DELETE /api/account` | — | propia | propia | propia | propia |
+| Cuenta | Eliminar la propia cuenta (baja lógica): `DELETE /api/account` | — | propia (+R23) | — | propia (+R23) | propia (+R23) |
 | Perfil del Talento | Ver el propio perfil: `GET /api/profile/me` | — | propio | — | — | — |
 | Perfil del Talento | Modificar el propio perfil: `PATCH /api/profile/me` | — | propio | — | — | — |
 | Catálogo | Buscar cursos/proyectos publicados: `GET /api/catalog/courses` | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -93,8 +93,8 @@ Cada fila corresponde a una combinación de método HTTP y endpoint implementado
 
 ### Condiciones de las operaciones implementadas
 
-- **Sesión y CSRF.** `SessionPolicyFilter` evalúa `sesion.iniciar` y `sesion.cerrar` antes de los filtros de login y logout. El login requiere credenciales válidas de una cuenta habilitada y solo puede iniciarlo el Visitante; un usuario autenticado debe cerrar sesión antes de iniciar otra. La reautenticación usa `sesion.reautenticar`, asignada únicamente al Admin, y comprueba su contraseña. `GET /api/auth/csrf` usa la regla especial `sesion.token_csrf`, accesible por cualquier sujeto. Todas las escrituras requieren CSRF válido, incluidos registro, login, logout, reautenticación y aceptación de invitaciones.
-- **Cuentas y staff.** Las operaciones autenticadas requieren una cuenta habilitada; el staff necesita una membresía activa con rol asignado. Cambiar el rol o dar de baja a un miembro exige reautenticación vigente y no puede aplicarse a la propia membresía del Admin. Eliminar la propia cuenta realiza una baja lógica e invalida la sesión actual.
+- **Sesión y CSRF.** `SessionPolicyFilter` evalúa `sesion.iniciar` y `sesion.cerrar` antes de los filtros de login y logout. El login requiere credenciales válidas de una cuenta habilitada y solo puede iniciarlo el Visitante; un usuario autenticado debe cerrar sesión antes de iniciar otra. La reautenticación usa `sesion.reautenticar`, disponible para los cuatro roles autenticados, y comprueba la contraseña de la propia cuenta. `GET /api/auth/csrf` usa la regla especial `sesion.token_csrf`, accesible por cualquier sujeto. Todas las escrituras requieren CSRF válido, incluidos registro, login, logout, reautenticación y aceptación de invitaciones.
+- **Cuentas y staff.** Las operaciones autenticadas requieren una cuenta habilitada; el staff necesita una membresía activa con rol asignado. Cambiar el rol o dar de baja a un miembro exige reautenticación vigente y no puede aplicarse a la propia membresía del Admin. Eliminar la propia cuenta usa `cuenta.eliminar`, requiere reautenticación vigente en la misma sesión y realiza una baja lógica que invalida la sesión actual y revoca las restantes en su próxima solicitud. El Admin tiene prohibida la autoeliminación incluso si se reautenticó o existe otro administrador, conforme a la restricción sobre su propia membresía. Ver [RS23](rs23-sesiones-administrativas.md).
 - **Ofertas, postulaciones y CV.** Crear una oferta genera un borrador; modificar y publicar solo se permite en estado `BORRADOR`. Una postulación requiere una oferta publicada y disponer de CV; solo se admite una por Talento y oferta. El listado empresarial requiere también `perfil.ver_postulante` para cada postulante. La descarga empresarial entrega la versión del CV vinculada a esa postulación, que puede diferir del CV actual del Talento. Los campos se limitan según R2.
 - **Avance.** `PATCH /api/enrollments/{id}/progress` actualiza únicamente `porcentajeAvance` de una inscripción propia, bajo la acción `inscripcion.ver`. No equivale a completar lecciones ni responder entregables.
 - **Demo.** Ninguna migración concede `demo.permiso_asignable`: se deniega a los cinco consumidores. El script local [demo-permiso-asignable.sql](../../scripts/demo-permiso-asignable.sql) permite concederla temporalmente a un rol para demostrar el cambio de permisos en datos; se debe retirar ese permiso al terminar.
@@ -137,5 +137,6 @@ La etapa implementada de RF6 solo persiste ofertas `BORRADOR`/`PUBLICADA` y post
 
 ## Historial de cambios
 
+- **1.4 (03/11/2026):** corrección RS23: eliminación de cuenta como acción sensible separada, autoeliminación del Admin denegada y reautenticación habilitada para los demás roles antes de eliminar su cuenta.
 - **1.3 (03/11/2026):** revisión RS1 contra los controllers, filtros de sesión, PEP y permisos de las migraciones de `rama-ana`. Se explicita cada método y endpoint con sus cinco consumidores, incluidos autenticación, CSRF, demo, publicación de ofertas, eliminación de cuenta, aceptación de invitaciones y metadatos del CV. Se separan las operaciones previstas sin endpoint.
 - **1.2 (27/09/2026):** versión anterior de la matriz por operaciones agrupadas.
