@@ -1,13 +1,13 @@
 # RS19 — Protección de los registros de seguridad
 
 Requerimiento de seguridad: **RS19** (ASVS v5.0.0-16.4.1, 16.4.2; documentado como R19 en el modelo)
-Versión: 1.0 (16/10/2026)
+Versión: 1.1 (02/11/2026). Cambios: el almacén pasa a ser el único destino de los eventos y se agrega la política de retención.
 
 Los registros de eventos de seguridad están protegidos frente a lectura, modificación o borrado no autorizados, incluso para los usuarios con más privilegios de la aplicación. Además, todo texto que termina en un registro se codifica antes de escribirse, para que no se puedan fabricar entradas falsas ni inyectar contenido en la herramienta con que se leen.
 
 ## Almacén de solo agregado (16.4.2)
 
-Cada denegación que emite RS18 (`RegistroAccesosEstructurado`) se agrega a un **almacén separado** de la base de la aplicación:
+Cada denegación que emite RS18 (`RegistroAccesosEstructurado`) se agrega a un **almacén separado** de la base de la aplicación. Es el **único destino** de los eventos: no se copian al log común del proceso (ver [Si el almacén no está disponible](#si-el-almacén-no-está-disponible)).
 
 | Aspecto | Implementación |
 |---|---|
@@ -47,7 +47,25 @@ java -cp ~/.m2/repository/com/h2database/h2/<versión>/h2-<versión>.jar org.h2.
 
 ### Si el almacén no está disponible
 
-La denegación ocurre igual y con la misma respuesta (R6). La falla queda en el log del servidor, sin credenciales. El evento también sigue emitiéndose en el logger de RS18 (`uy.edu.um.xperience.security.access`): esa copia es salida operativa del proceso, solo accesible desde el servidor y no desde la aplicación, y no contiene datos sensibles (ver RS18).
+La denegación ocurre igual y con la misma respuesta (R6). La falla queda en el log del servidor, sin credenciales. Solo en ese caso el evento se escribe en el logger de RS18 (`uy.edu.um.xperience.security.access`), para que no se pierda. Es una copia de respaldo que existe únicamente mientras el almacén está caído: solo es accesible desde el servidor y no desde la aplicación, y no contiene datos sensibles (ver RS18).
+
+### Política de retención
+
+| Aspecto | Definición |
+|---|---|
+| Plazo | Cada evento se conserva **al menos 365 días** desde `REGISTRADO_EN` (`app.security-log.retention-days`, `SECURITY_LOG_RETENTION_DAYS`) |
+| Quién depura | Solo el administrador del almacén (auditoría). El escritor de la aplicación no tiene `DELETE`, así que la aplicación nunca borra eventos |
+| Cómo | `AlmacenRegistroSeguridad.depurar`, mediante el script de abajo. Borra únicamente los eventos más antiguos que el plazo |
+| Mínimo | Se rechaza cualquier plazo menor a 365 días (`RETENCION_MINIMA_DIAS`), incluso si lo pide el auditor |
+
+```powershell
+.\scripts\depurar-registro-seguridad.ps1 [-Dias 365]          # Windows
+```
+```bash
+./scripts/depurar-registro-seguridad.sh [administrador] [dias]  # macOS / Linux
+```
+
+El script pide la contraseña del administrador de forma oculta y no la deja en la configuración de la aplicación. Se recomienda ejecutarlo una vez por mes.
 
 ## Codificación antes de escribir (16.4.1)
 
@@ -70,7 +88,12 @@ Además, RS18 ya registra solo una lista blanca de metadatos (UUID, acción del 
 5. Un evento con `\r\n`, un JSON falso, `<script>`, U+202E, U+2028 y un valor de 5000 caracteres se guarda en una sola línea, codificado, acotado y con `event`/`result` sin alterar.
 6. El texto común (acciones, nombres con tildes, IP) no cambia.
 
-`Rs19StoreUnavailableTest`: sin almacén aprovisionado, la solicitud sigue denegada (403) y la falla queda en el log sin la contraseña del escritor.
+7. Con el almacén disponible, el logger común no recibe el evento: el almacén es el único destino.
+8. La depuración rechaza plazos menores a 365 días, el escritor de la aplicación no puede ejecutarla (no tiene `DELETE`), y el auditor borra solo los eventos vencidos.
+
+`Rs19StoreUnavailableTest`: sin almacén aprovisionado, la solicitud sigue denegada (403), la falla queda en el log sin la contraseña del escritor y el evento va al logger de respaldo.
+
+Las pruebas de RS18 (`Rs18DeniedAccessLogTest`) y la de campos prohibidos del CV (`CurriculumIntegrationTest`) leen los eventos del almacén con las credenciales de auditoría (`SecurityLogAuditor`), no de un logger.
 
 ```bash
 cd backend

@@ -16,6 +16,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 /**
  * RS18 — emite un evento estructurado (JSON) por cada acceso denegado.
  * Solo serializa una allowlist de metadatos seguros; nunca cuerpos, secretos ni contenido.
+ * RS19 — el destino es el almacén protegido de solo agregado. El logger de seguridad solo recibe el
+ * evento si el almacén falla, para no perderlo.
  */
 @Component
 public class RegistroAccesosEstructurado implements RegistroAccesos {
@@ -60,11 +62,11 @@ public class RegistroAccesosEstructurado implements RegistroAccesos {
             // Every value is encoded before it is written anywhere (RS19).
             event.replaceAll((key, value) -> value instanceof String text ? CodificadorRegistro.codificar(text) : value);
             String line = json.writeValueAsString(event);
-            log.warn("{}", line);
             try {
                 store.agregar(line);
             } catch (RuntimeException error) {
                 failures.error("No se pudo agregar el evento al almacén de registros de seguridad; la denegación se mantiene", error);
+                log.warn("{}", line);
             }
         } catch (Exception ignored) {
             // Logging must never convert a denial into an allow. Swallow and continue.

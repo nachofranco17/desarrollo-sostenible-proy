@@ -14,7 +14,7 @@ El punto único de emisión es `Denegaciones.registrar`, invocado por:
 - el manejador de fallos de login;
 - `ApiErrors` ante campos no permitidos / cuerpos inválidos de autorización (RS12).
 
-Ese método completa metadatos seguros y llama a `RegistroAccesos.denegado`. La implementación activa es `RegistroAccesosEstructurado`, que escribe una línea JSON en el logger `uy.edu.um.xperience.security.access`.
+Ese método completa metadatos seguros y llama a `RegistroAccesos.denegado`. La implementación activa es `RegistroAccesosEstructurado`, que arma una línea JSON y la agrega al almacén protegido de RS19. El logger `uy.edu.um.xperience.security.access` solo la recibe como respaldo, si el almacén no está disponible.
 
 No se agregan `logger.warn` sueltos en cada endpoint: las denegaciones que ya pasan por el mecanismo de autorización existente quedan registradas de forma consistente.
 
@@ -112,11 +112,11 @@ cd backend
 ## Cómo probar manualmente
 
 1. Arrancar el backend y provocar cada denegación (mismo flujo que las pruebas).
-2. Observar el log de la aplicación (logger `uy.edu.um.xperience.security.access`) y verificar una línea JSON por intento con los campos de la tabla.
+2. Consultar el almacén de registros con las credenciales de auditoría (ver [RS19](rs19-proteccion-registros.md#consulta-por-un-auditor)) y verificar una línea JSON por intento con los campos de la tabla.
 3. Confirmar que en esa línea no aparecen contraseñas, emails, tokens, cookies, cuerpos ni contenido de archivos.
 
 ## Alcance y pendientes
 
-RS18 **emite** el evento. Su protección la resuelve RS19: cada evento se codifica y se agrega a un almacén de solo agregado separado de la base de la aplicación ([rs19-proteccion-registros.md](rs19-proteccion-registros.md)). Retención, SIEM o dashboards quedan fuera de alcance.
+RS18 **emite** el evento. Su protección la resuelve RS19: cada evento se codifica y se agrega a un almacén de solo agregado separado de la base de la aplicación ([rs19-proteccion-registros.md](rs19-proteccion-registros.md)). La retención también la define RS19. SIEM o dashboards quedan fuera de alcance.
 
 RF6 usa el mismo mecanismo para ofertas, postulaciones, perfil contextual y CV. Las rutas empresariales se clasifican como organización y las operaciones de CV como archivo, salvo que ya se haya marcado una denegación por rol o campo. Las búsquedas/filtros no se incluyen en el evento. Inscripción sigue pendiente de API de negocio.

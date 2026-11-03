@@ -20,7 +20,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * RS19 — sin almacén (no aprovisionado o caído), la denegación se mantiene, el escritor no crea una
- * base propia y la falla queda en el log del servidor sin credenciales.
+ * base propia, la falla queda en el log del servidor sin credenciales y el evento no se pierde: va al
+ * logger de seguridad como respaldo.
  */
 @SpringBootTest(properties = {
     "app.security-log.provision=false",
@@ -45,6 +46,7 @@ class Rs19StoreUnavailableTest {
 
         assertThat(output.getOut() + output.getErr())
             .contains("No se pudo agregar el evento al almacén de registros de seguridad")
+            .contains("\"event\":\"authorization_denied\"")
             .doesNotContain("clave-del-escritor-rs19");
     }
 }

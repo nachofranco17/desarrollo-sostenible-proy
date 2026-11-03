@@ -10,6 +10,7 @@ import java.sql.*;
 import java.util.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -64,6 +65,48 @@ class Rs19SecurityLogProtectionTest {
         assertThat(event.path("action").asString()).isEqualTo("staff.ver");
         assertThat(event.path("result").asString()).isEqualTo("denied");
         assertThat(events.get(0)).doesNotContain(talent.email, PASSWORD);
+    }
+
+    @Test
+    void theOrdinaryLoggerDoesNotReceiveTheEventWhenTheStoreIsAvailable() throws Exception {
+        var logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(RegistroAccesosEstructurado.LOGGER_NAME);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            long before = lastId();
+            assertThat(registerTalent().get("/staff").statusCode()).isEqualTo(403);
+            assertThat(eventsAfter(before)).hasSize(1);
+            assertThat(appender.list).as("el evento solo va al almacén protegido").isEmpty();
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
+    @Test
+    void retentionPurgeOnlyDeletesExpiredEventsAndOnlyTheAuditorCanRunIt() throws Exception {
+        long expired;
+        long recent;
+        try (Connection c = auditor(); Statement sql = c.createStatement()) {
+            sql.execute("INSERT INTO EVENTO_SEGURIDAD (REGISTRADO_EN, EVENTO) VALUES "
+                + "(DATEADD(DAY, -400, CURRENT_TIMESTAMP), '{\"prueba\":\"vencido\"}')");
+            expired = lastId();
+            sql.execute("INSERT INTO EVENTO_SEGURIDAD (REGISTRADO_EN, EVENTO) VALUES "
+                + "(DATEADD(DAY, -300, CURRENT_TIMESTAMP), '{\"prueba\":\"vigente\"}')");
+            recent = lastId();
+        }
+        // Nunca se acepta una retención menor a la mínima, ni siquiera para el auditor.
+        assertThatThrownBy(() -> AlmacenRegistroSeguridad.depurar(url, auditorUser, auditorPassword, 30))
+            .isInstanceOf(IllegalArgumentException.class);
+        // El escritor de la aplicación no puede depurar: no tiene DELETE.
+        assertThatThrownBy(() -> AlmacenRegistroSeguridad.depurar(url, writerUser, writerPassword, 365))
+            .isInstanceOfSatisfying(SQLException.class, error -> assertThat(error.getErrorCode()).isEqualTo(90096));
+        assertThat(eventsAfter(expired - 1)).hasSize(2);
+
+        assertThat(AlmacenRegistroSeguridad.depurar(url, auditorUser, auditorPassword, 365)).isPositive();
+
+        assertThat(eventsAfter(expired - 1)).containsExactly("{\"prueba\":\"vigente\"}");
+        assertThat(lastId()).isEqualTo(recent);
     }
 
     @Test

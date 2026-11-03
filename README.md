@@ -52,7 +52,7 @@ La base es **H2** persistente en `backend/.data/` (archivo `xperience`). Las cue
 
 - invitaciones RF7 → `backend/.data/invitaciones/`
 - materiales de cursos RF5 → `backend/.data/archivos` (configurable con `STORAGE_DIR`)
-- registros de seguridad RS19 → `backend/.data/registros-seguridad`, base separada que el perfil `dev` crea sola; fuera de `dev` se crea con `scripts/crear-registro-seguridad` ([detalle](docs/seguridad/rs19-proteccion-registros.md))
+- registros de seguridad RS19 → `backend/.data/registros-seguridad`, base separada que el perfil `dev` crea sola; fuera de `dev` se crea con `scripts/crear-registro-seguridad`; los eventos se conservan al menos 365 días y se depuran con `scripts/depurar-registro-seguridad` ([detalle](docs/seguridad/rs19-proteccion-registros.md))
 
 No requiere crear usuarios ni bases manualmente. No hace falta Docker.
 

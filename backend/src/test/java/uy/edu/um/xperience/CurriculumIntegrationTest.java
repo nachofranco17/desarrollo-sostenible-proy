@@ -2,9 +2,6 @@ package uy.edu.um.xperience;
 
 import java.util.Map;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
@@ -21,8 +18,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,7 +30,6 @@ import uy.edu.um.xperience.course.FileStorage;
 import uy.edu.um.xperience.curriculum.CurriculumRepository;
 import uy.edu.um.xperience.provision.CompanyProvisioner;
 import uy.edu.um.xperience.security.Denegaciones;
-import uy.edu.um.xperience.security.RegistroAccesosEstructurado;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** CV privado RF6: servidor real, sesión, CSRF, versiones y entradas estrictas. */
@@ -52,6 +48,9 @@ class CurriculumIntegrationTest {
     @Autowired PasswordEncoder passwords;
     @Autowired FileStorage storage;
     @Autowired JdbcTemplate jdbc;
+    @Value("${app.security-log.url}") String securityLogUrl;
+    @Value("${app.security-log.admin-user}") String auditorUser;
+    @Value("${app.security-log.admin-password}") String auditorPassword;
 
     @Test
     void uploadsPdfDetectedBySignatureWithSafeMetadataAndPrivateDownload() throws Exception {
@@ -230,25 +229,20 @@ class CurriculumIntegrationTest {
         UUID id = uploaded(talent, PDF);
         String key = curriculums.find(id, talent.id).orElseThrow().claveAlmacen();
         String secret = "no-debe-aparecer-en-el-registro";
-        Logger logger = (Logger) LoggerFactory.getLogger(RegistroAccesosEstructurado.LOGGER_NAME);
-        var appender = new ListAppender<ILoggingEvent>();
-        appender.start();
-        logger.addAppender(appender);
-        try {
-            assertThat(talent.multipart(BASE, List.of(
-                new Part("archivo", "cv.pdf", PDF, "application/pdf"),
-                new Part("curriculumId", null, secret.getBytes(StandardCharsets.UTF_8), "text/plain")), true)
-                .statusCode()).isEqualTo(400);
-            assertThat(appender.list).hasSize(1);
-            String raw = appender.list.get(0).getFormattedMessage();
-            JsonNode event = json.readTree(raw);
-            assertThat(event.path("action").asString()).isEqualTo("curriculum.subir");
-            assertThat(event.path("reason").asString()).isEqualTo(Denegaciones.FIELD_ACCESS_DENIED);
-            assertThat(event.path("field").asString()).isEqualTo("curriculumId");
-            assertThat(raw).doesNotContain(secret, key, PASSWORD, "Curriculum original");
-        } finally {
-            logger.detachAppender(appender);
-        }
+        var auditor = new SecurityLogAuditor(securityLogUrl, auditorUser, auditorPassword);
+        long before = auditor.lastId();
+        assertThat(talent.multipart(BASE, List.of(
+            new Part("archivo", "cv.pdf", PDF, "application/pdf"),
+            new Part("curriculumId", null, secret.getBytes(StandardCharsets.UTF_8), "text/plain")), true)
+            .statusCode()).isEqualTo(400);
+        List<String> events = auditor.eventsAfter(before);
+        assertThat(events).hasSize(1);
+        String raw = events.get(0);
+        JsonNode event = json.readTree(raw);
+        assertThat(event.path("action").asString()).isEqualTo("curriculum.subir");
+        assertThat(event.path("reason").asString()).isEqualTo(Denegaciones.FIELD_ACCESS_DENIED);
+        assertThat(event.path("field").asString()).isEqualTo("curriculumId");
+        assertThat(raw).doesNotContain(secret, key, PASSWORD, "Curriculum original");
     }
 
     private int count(UUID usuarioId) {

@@ -2,6 +2,7 @@ package uy.edu.um.xperience.security;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.slf4j.Logger;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class AlmacenRegistroSeguridad {
     static final String TABLA = "EVENTO_SEGURIDAD";
+    /** Política de retención: cada evento se conserva al menos un año desde que se registró. */
+    public static final int RETENCION_MINIMA_DIAS = 365;
     private static final String NOMBRE_USUARIO = "[A-Za-z][A-Za-z0-9_]{0,63}";
     private static final Logger log = LoggerFactory.getLogger(AlmacenRegistroSeguridad.class);
 
@@ -71,6 +74,26 @@ public class AlmacenRegistroSeguridad {
             sql.execute("ALTER USER " + writerUser + " ADMIN FALSE");
             sql.execute("REVOKE ALL ON " + TABLA + " FROM " + writerUser);
             sql.execute("GRANT INSERT ON " + TABLA + " TO " + writerUser);
+        }
+    }
+
+    /**
+     * Borra los eventos registrados hace más de {@code dias} días. Solo puede hacerlo el administrador
+     * del almacén: el escritor de la aplicación no tiene DELETE. Nunca acepta una retención menor a
+     * {@link #RETENCION_MINIMA_DIAS}. Devuelve la cantidad de eventos borrados.
+     */
+    public static int depurar(String url, String adminUser, String adminPassword, int dias) throws SQLException {
+        if (dias < RETENCION_MINIMA_DIAS) {
+            throw new IllegalArgumentException("La retención mínima es de " + RETENCION_MINIMA_DIAS + " días");
+        }
+        if (isBlank(adminUser) || isBlank(adminPassword)) {
+            throw new IllegalArgumentException("Faltan las credenciales del administrador del almacén");
+        }
+        try (Connection connection = DriverManager.getConnection(url + ";IFEXISTS=TRUE", adminUser, adminPassword);
+             PreparedStatement sql = connection.prepareStatement("DELETE FROM " + TABLA
+                 + " WHERE REGISTRADO_EN < DATEADD(DAY, ?, CURRENT_TIMESTAMP)")) {
+            sql.setInt(1, -dias);
+            return sql.executeUpdate();
         }
     }
 

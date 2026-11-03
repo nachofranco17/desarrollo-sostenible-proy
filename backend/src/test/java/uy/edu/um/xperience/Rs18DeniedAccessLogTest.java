@@ -1,8 +1,5 @@
 package uy.edu.um.xperience;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -12,8 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.*;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,12 +19,11 @@ import uy.edu.um.xperience.account.AccountRepository;
 import uy.edu.um.xperience.account.RegisterRequest;
 import uy.edu.um.xperience.provision.CompanyProvisioner;
 import uy.edu.um.xperience.security.Denegaciones;
-import uy.edu.um.xperience.security.RegistroAccesosEstructurado;
 import static org.assertj.core.api.Assertions.*;
 
 /**
  * RS18 — Registro estructurado de intentos de acceso denegados.
- * Captura el logger de seguridad y comprueba metadatos mínimos y ausencia de secretos.
+ * Lee el almacén de registros de seguridad (RS19) y comprueba metadatos mínimos y ausencia de secretos.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class Rs18DeniedAccessLogTest {
@@ -43,22 +39,17 @@ class Rs18DeniedAccessLogTest {
     @Autowired PasswordEncoder passwords;
     @Autowired JdbcTemplate jdbc;
 
-    private ListAppender<ILoggingEvent> appender;
-    private Logger securityLogger;
+    @Value("${app.security-log.url}") String securityLogUrl;
+    @Value("${app.security-log.admin-user}") String auditorUser;
+    @Value("${app.security-log.admin-password}") String auditorPassword;
+
+    private SecurityLogAuditor auditor;
+    private long lastSeen;
 
     @BeforeEach
-    void captureSecurityLog() {
-        securityLogger = (Logger) LoggerFactory.getLogger(RegistroAccesosEstructurado.LOGGER_NAME);
-        appender = new ListAppender<>();
-        appender.start();
-        securityLogger.addAppender(appender);
-    }
-
-    @AfterEach
-    void detach() {
-        if (securityLogger != null && appender != null) {
-            securityLogger.detachAppender(appender);
-        }
+    void readSecurityLog() throws Exception {
+        auditor = new SecurityLogAuditor(securityLogUrl, auditorUser, auditorPassword);
+        lastSeen = auditor.lastId();
     }
 
     @Test
@@ -251,12 +242,13 @@ class Rs18DeniedAccessLogTest {
     }
 
     private JsonNode singleEvent() throws Exception {
-        assertThat(appender.list).as("un evento RS18 por denegación").hasSize(1);
-        return json.readTree(appender.list.get(0).getFormattedMessage());
+        List<String> events = auditor.eventsAfter(lastSeen);
+        assertThat(events).as("un evento RS18 por denegación").hasSize(1);
+        return json.readTree(events.get(0));
     }
 
-    private void clearEvents() {
-        appender.list.clear();
+    private void clearEvents() throws Exception {
+        lastSeen = auditor.lastId();
     }
 
     // ---- apoyo ----
