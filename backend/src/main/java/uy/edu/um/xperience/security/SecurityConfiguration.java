@@ -58,7 +58,12 @@ public class SecurityConfiguration {
         http.with(new LoginConfigurer(login), configurer -> {});
         http.logout(logout -> logout.logoutUrl("/api/auth/logout")
             .invalidateHttpSession(true).clearAuthentication(true).deleteCookies("SESSION")
-            .logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)));
+            .logoutSuccessHandler((request, response, authentication) -> {
+                // OWASP Secure Headers: the browser drops cached responses, cookies and storage of the closed session.
+                // Spring's ClearSiteDataHeaderWriter skips plain HTTP, which the local setup uses behind Vite.
+                response.setHeader("Clear-Site-Data", "\"cache\",\"cookies\",\"storage\"");
+                response.setStatus(204);
+            }));
         http.exceptionHandling(errors -> errors
             .authenticationEntryPoint((request, response, error) -> denials.responder(request, response, 401))
             .accessDeniedHandler((request, response, error) -> denials.responder(request, response, 403)));

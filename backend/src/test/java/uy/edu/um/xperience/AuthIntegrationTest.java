@@ -61,7 +61,9 @@ class AuthIntegrationTest {
         assertThat(profile.body()).doesNotContain("password", "hash");
         assertThat(profile.headers().firstValue("cache-control").orElse("")).contains("no-store");
         assertThat(replay(oldCookie).statusCode()).isEqualTo(401);
-        assertThat(client.post("/auth/logout", "", "application/json", true).statusCode()).isEqualTo(204);
+        var logout = client.post("/auth/logout", "", "application/json", true);
+        assertThat(logout.statusCode()).isEqualTo(204);
+        assertThat(logout.headers().firstValue("clear-site-data")).hasValue("\"cache\",\"cookies\",\"storage\"");
         assertThat(client.get("/account").statusCode()).isEqualTo(401);
         assertThat(replay(loggedCookie).statusCode()).isEqualTo(401);
     }
