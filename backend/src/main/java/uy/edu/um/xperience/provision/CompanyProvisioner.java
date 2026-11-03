@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uy.edu.um.xperience.account.*;
 import uy.edu.um.xperience.persistence.*;
+import uy.edu.um.xperience.profile.ProfileRepository;
 import uy.edu.um.xperience.security.Passwords;
 
 @Service
@@ -15,12 +16,13 @@ public class CompanyProvisioner {
     private final Membresias memberships;
     private final AltasEmpresa audit;
     private final AccountRepository accounts;
+    private final ProfileRepository profiles;
     private final PasswordEncoder passwords;
     private final Validator validator;
     public CompanyProvisioner(Empresas companies, Membresias memberships, AltasEmpresa audit,
-            AccountRepository accounts, PasswordEncoder passwords, Validator validator) {
+            AccountRepository accounts, ProfileRepository profiles, PasswordEncoder passwords, Validator validator) {
         this.companies = companies; this.memberships = memberships; this.audit = audit;
-        this.accounts = accounts; this.passwords = passwords; this.validator = validator;
+        this.accounts = accounts; this.profiles = profiles; this.passwords = passwords; this.validator = validator;
     }
     @Transactional
     public UUID create(String companyName, RegisterRequest admin, String actor) {
@@ -34,6 +36,7 @@ public class CompanyProvisioner {
             var company = new Empresa(); company.id = UUID.randomUUID(); company.nombre = companyName.strip();
             companies.saveAndFlush(company);
             UUID adminId = accounts.create(admin.correo(), admin.nombre(), admin.apellido(), passwords.encode(Passwords.view(admin.password())), "STAFF");
+            profiles.createEmpty(adminId);
             var membership = new Membresia();
             membership.usuarioId = adminId; membership.empresaId = company.id; membership.rol = "ADMIN"; membership.estado = "ACTIVA";
             memberships.saveAndFlush(membership);

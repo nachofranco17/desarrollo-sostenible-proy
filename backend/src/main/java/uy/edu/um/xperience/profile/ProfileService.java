@@ -57,7 +57,7 @@ public class ProfileService {
         try (input) {
             Sujeto subject = subjects.current();
             TalentProfile current = requireOwnProfile(subject);
-            Account account = requireActiveTalent(subject.usuarioId());
+            Account account = requireActiveAccount(subject.usuarioId());
 
             if (input.wantsPasswordChange() && !input.hasCompletePasswordChange()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -114,7 +114,7 @@ public class ProfileService {
         if (subject.usuarioId() == null) {
             throw denied();
         }
-        requireActiveTalent(subject.usuarioId());
+        requireActiveAccount(subject.usuarioId());
         // Consulta acotada al usuario de la sesión: no se busca un perfil por id de request (RS11).
         TalentProfile profile = profiles.byUsuarioId(subject.usuarioId())
             .orElseThrow(ProfileService::denied);
@@ -124,14 +124,10 @@ public class ProfileService {
         return profile;
     }
 
-    private Account requireActiveTalent(UUID usuarioId) {
-        Account account = accounts.byId(usuarioId)
+    private Account requireActiveAccount(UUID usuarioId) {
+        return accounts.byId(usuarioId)
             .filter(Account::canSignIn)
             .orElseThrow(ProfileService::denied);
-        if (!"TALENTO".equals(account.tipoCuenta())) {
-            throw denied();
-        }
-        return account;
     }
 
     /** Cursos y proyectos en curso o completados (el % viene de la inscripción RF4). */

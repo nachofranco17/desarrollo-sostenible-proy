@@ -38,7 +38,7 @@ public class EnrollmentService {
     @Transactional
     public EnrollmentView.Item enroll(UUID cursoId) {
         Sujeto subject = subjects.current();
-        Account talent = requireActiveTalent(subject);
+        Account talent = requireActiveAccount(subject);
         Course course = enrollments.findPublishedCourse(cursoId).orElseThrow(EnrollmentService::denied);
         if (!policy.autorizar(subject, "inscripcion.crear", course)) {
             throw denied();
@@ -58,7 +58,7 @@ public class EnrollmentService {
     @Transactional(readOnly = true)
     public EnrollmentView.Page listMine() {
         Sujeto subject = subjects.current();
-        Account talent = requireActiveTalent(subject);
+        Account talent = requireActiveAccount(subject);
         // Listado acotado al sujeto: no hay filtro por userId de request.
         return new EnrollmentView.Page(enrollments.listOwned(talent.id()));
     }
@@ -66,7 +66,7 @@ public class EnrollmentService {
     @Transactional(readOnly = true)
     public EnrollmentView.Item getMine(UUID id) {
         Sujeto subject = subjects.current();
-        Account talent = requireActiveTalent(subject);
+        Account talent = requireActiveAccount(subject);
         Enrollment enrollment = requireOwnedEnrollment(subject, id, talent.id());
         return enrollments.findOwnedItem(enrollment.id(), talent.id()).orElseThrow(EnrollmentService::denied);
     }
@@ -74,7 +74,7 @@ public class EnrollmentService {
     @Transactional
     public EnrollmentView.Item updateProgress(UUID id, int porcentajeAvance) {
         Sujeto subject = subjects.current();
-        Account talent = requireActiveTalent(subject);
+        Account talent = requireActiveAccount(subject);
         Enrollment locked = enrollments.findOwnedForUpdate(id, talent.id()).orElse(null);
         if (locked == null) {
             // Misma denegación si no existe o es de otro Talento (R11).
@@ -108,17 +108,13 @@ public class EnrollmentService {
         return owned;
     }
 
-    private Account requireActiveTalent(Sujeto subject) {
+    private Account requireActiveAccount(Sujeto subject) {
         if (subject.usuarioId() == null) {
             throw denied();
         }
-        Account account = accounts.byId(subject.usuarioId())
+        return accounts.byId(subject.usuarioId())
             .filter(Account::canSignIn)
             .orElseThrow(EnrollmentService::denied);
-        if (!"TALENTO".equals(account.tipoCuenta())) {
-            throw denied();
-        }
-        return account;
     }
 
     private static ResponseStatusException duplicate() {

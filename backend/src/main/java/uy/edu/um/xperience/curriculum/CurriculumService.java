@@ -49,7 +49,7 @@ public class CurriculumService {
 
     @Transactional(readOnly = true)
     public CurriculumView metadataOwn() {
-        Sujeto subject = ownTalent("curriculum.descargar");
+        Sujeto subject = ownAccount("curriculum.descargar");
         Curriculum current = curriculums.current(subject.usuarioId()).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "No tenés un currículum actual."));
         if (!policy.autorizar(subject, "curriculum.descargar", current)) throw denied();
@@ -58,7 +58,7 @@ public class CurriculumService {
 
     @Transactional
     public CurriculumView uploadOwn(MultipartFile file) {
-        Sujeto subject = ownTalent("curriculum.subir");
+        Sujeto subject = ownAccount("curriculum.subir");
         if (file == null || file.isEmpty()) {
             throw invalid("El archivo está vacío.");
         }
@@ -100,7 +100,7 @@ public class CurriculumService {
 
     @Transactional(readOnly = true)
     public Download downloadOwn() {
-        Sujeto subject = ownTalent("curriculum.descargar");
+        Sujeto subject = ownAccount("curriculum.descargar");
         Curriculum curriculum = curriculums.current(subject.usuarioId()).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "No tenés un currículum actual."));
         if (!policy.autorizar(subject, "curriculum.descargar", curriculum)) {
@@ -109,13 +109,13 @@ public class CurriculumService {
         return new Download(curriculum, storage.open(curriculum.claveAlmacen()));
     }
 
-    private Sujeto ownTalent(String action) {
+    private Sujeto ownAccount(String action) {
         Sujeto subject = subjects.current();
-        if (subject.usuarioId() == null || subject.tipoCuenta() != Sujeto.TipoCuenta.TALENTO) {
+        if (subject.usuarioId() == null) {
             throw denied();
         }
         accounts.byId(subject.usuarioId()).filter(Account::canSignIn)
-            .filter(account -> "TALENTO".equals(account.tipoCuenta())).orElseThrow(CurriculumService::denied);
+            .orElseThrow(CurriculumService::denied);
         if (!policy.autorizar(subject, action, ResourceAccess.own(subject.usuarioId()))) {
             throw denied();
         }

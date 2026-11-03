@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import uy.edu.um.xperience.account.AccountRepository;
 import uy.edu.um.xperience.account.RegisterRequest;
@@ -51,6 +52,9 @@ class CurriculumIntegrationTest {
     @Value("${app.security-log.url}") String securityLogUrl;
     @Value("${app.security-log.admin-user}") String auditorUser;
     @Value("${app.security-log.admin-password}") String auditorPassword;
+    @Value("${spring.flyway.url}") String ownerUrl;
+    @Value("${spring.flyway.user}") String ownerUser;
+    @Value("${spring.flyway.password}") String ownerPassword;
 
     @Test
     void uploadsPdfDetectedBySignatureWithSafeMetadataAndPrivateDownload() throws Exception {
@@ -221,6 +225,22 @@ class CurriculumIntegrationTest {
         assertThat(staff.upload(BASE, "cv.pdf", PDF, true).statusCode()).isEqualTo(403);
         assertThat(staff.get(BASE).statusCode()).isEqualTo(403);
         assertThat(count(staff.id)).isZero();
+    }
+
+    @Test
+    void databasePermissionImmediatelyEnablesCurriculumUploadForAdmin() throws Exception {
+        var admin = staff("ADMIN");
+        assertThat(admin.upload(BASE, "cv.pdf", PDF, true).statusCode()).isEqualTo(403);
+
+        var owner = new JdbcTemplate(new DriverManagerDataSource(ownerUrl, ownerUser, ownerPassword));
+        try {
+            owner.update("INSERT INTO permiso(rol, accion, alcance) VALUES ('ADMIN', 'curriculum.subir', 'PROPIO')");
+
+            assertThat(admin.upload(BASE, "cv.pdf", PDF, true).statusCode()).isEqualTo(201);
+            assertThat(count(admin.id)).isOne();
+        } finally {
+            owner.update("DELETE FROM permiso WHERE rol = 'ADMIN' AND accion = 'curriculum.subir'");
+        }
     }
 
     @Test

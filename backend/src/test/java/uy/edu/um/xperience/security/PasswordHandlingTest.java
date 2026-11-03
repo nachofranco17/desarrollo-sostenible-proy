@@ -124,7 +124,7 @@ class PasswordHandlingTest {
         var memberships = mock(uy.edu.um.xperience.persistence.Membresias.class);
         var tokens = mock(InvitationTokens.class);
         when(tokens.filter(anyString())).thenThrow(new IllegalStateException("token failed"));
-        var invitations = new StaffInvitationService(null, memberships, null, tokens, null, passwords);
+        var invitations = new StaffInvitationService(null, null, memberships, null, tokens, null, passwords);
         assertThatThrownBy(() -> invitations.accept("token", accept)).isInstanceOf(IllegalStateException.class);
         assertErased(accept.password());
 
@@ -136,7 +136,7 @@ class PasswordHandlingTest {
         assertErased(reauthInput.password());
 
         var admin = new RegisterRequest("a@example.test", "Ana", "Test", "una frase suficientemente larga".toCharArray());
-        var provisioner = new CompanyProvisioner(null, null, null, null, passwords, null);
+        var provisioner = new CompanyProvisioner(null, null, null, null, null, passwords, null);
         assertThatThrownBy(() -> provisioner.create(null, admin, "tests")).isInstanceOf(IllegalArgumentException.class);
         assertErased(admin.password());
     }

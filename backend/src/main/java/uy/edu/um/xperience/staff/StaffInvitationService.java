@@ -9,19 +9,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uy.edu.um.xperience.account.AccountRepository;
 import uy.edu.um.xperience.persistence.*;
+import uy.edu.um.xperience.profile.ProfileRepository;
 import uy.edu.um.xperience.security.*;
 
 @Service
 public class StaffInvitationService {
     private final AccountRepository accounts;
+    private final ProfileRepository profiles;
     private final Membresias memberships;
     private final EvaluadorPolitica policy;
     private final InvitationTokens tokens;
     private final InvitationDelivery delivery;
     private final PasswordEncoder passwords;
-    public StaffInvitationService(AccountRepository accounts, Membresias memberships, EvaluadorPolitica policy,
+    public StaffInvitationService(AccountRepository accounts, ProfileRepository profiles,
+            Membresias memberships, EvaluadorPolitica policy,
             InvitationTokens tokens, InvitationDelivery delivery, PasswordEncoder passwords) {
-        this.accounts = accounts; this.memberships = memberships; this.policy = policy;
+        this.accounts = accounts; this.profiles = profiles; this.memberships = memberships; this.policy = policy;
         this.tokens = tokens; this.delivery = delivery; this.passwords = passwords;
     }
     @Transactional
@@ -46,6 +49,7 @@ public class StaffInvitationService {
             UUID id;
             try { id = accounts.create(email, "", "", passwords.encode(Passwords.view(initialPassword)), "STAFF"); }
             finally { Passwords.clear(initialPassword); }
+            profiles.createEmpty(id);
             member = new Membresia(); member.usuarioId = id; member.empresaId = subject.empresaId();
             member.estado = "PENDIENTE";
         }
