@@ -10,6 +10,7 @@ import uy.edu.um.xperience.security.RequiereAccion;
 /**
  * Inscripción y seguimiento de avance del Talento (RF4).
  * Acciones: inscripcion.crear (PUBLICADO) e inscripcion.ver (PROPIO).
+ * No hay endpoint para escribir el avance: lo calcula el backend (DS-33, restricciones-campo.md).
  */
 @RestController
 @RequestMapping("/api/enrollments")
@@ -37,11 +38,5 @@ public class EnrollmentController {
     @GetMapping("/{id}")
     public EnrollmentView.Item getMine(@PathVariable UUID id) {
         return enrollments.getMine(id);
-    }
-
-    @RequiereAccion("inscripcion.ver")
-    @PatchMapping(value = "/{id}/progress", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public EnrollmentView.Item updateProgress(@PathVariable UUID id, @RequestBody JsonNode body) {
-        return enrollments.updateProgress(id, ProgressUpdateParser.parse(body));
     }
 }

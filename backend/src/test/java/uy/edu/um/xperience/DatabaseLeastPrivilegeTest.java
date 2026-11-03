@@ -24,6 +24,7 @@ class DatabaseLeastPrivilegeTest {
     @Value("${spring.flyway.url}") String ownerUrl;
     @Value("${spring.flyway.user}") String ownerUser;
     @Value("${spring.flyway.password}") String ownerPassword;
+    @Value("${spring.datasource.url}") String appUrl;
     @Value("${spring.datasource.username}") String appUser;
     @Value("${spring.datasource.password}") String appPassword;
 
@@ -121,6 +122,30 @@ class DatabaseLeastPrivilegeTest {
         assertDeniedForApplication(
             "INSERT INTO permiso (rol, accion, alcance) VALUES ('TALENTO', 'staff.cambiar_rol', 'ORG')",
             "CREATE USER otro PASSWORD 'otro-usuario'");
+    }
+
+    @Test
+    void thePasswordIsBoundAsAParameterSoSqlInsideItIsNeverExecuted() throws SQLException {
+        String hostile = "clave' ADMIN TRUE; DROP TABLE usuario; --";
+        try (Connection owner = owner()) {
+            try {
+                PrivilegiosBaseDatos.provisionar(owner, appUser, hostile);
+                // La contraseña se guardó literal: sirve para entrar y el usuario sigue sin ser administrador.
+                try (Connection app = DriverManager.getConnection(appUrl, appUser, hostile)) {
+                    assertThat(app.getMetaData().getUserName()).isEqualToIgnoringCase(appUser);
+                }
+                try (Statement sql = owner.createStatement();
+                     ResultSet row = sql.executeQuery("SELECT IS_ADMIN FROM INFORMATION_SCHEMA.USERS WHERE UPPER(USER_NAME) = '"
+                         + appUser.toUpperCase(Locale.ROOT) + "'")) {
+                    assertThat(row.next()).isTrue();
+                    assertThat(row.getBoolean(1)).isFalse();
+                }
+            } finally {
+                PrivilegiosBaseDatos.provisionar(owner, appUser, appPassword);
+            }
+        }
+        // La tabla sigue existiendo: el DROP escrito en la contraseña nunca se ejecutó.
+        assertThat(count("usuario")).isGreaterThanOrEqualTo(0);
     }
 
     @Test

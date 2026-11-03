@@ -1,9 +1,9 @@
 package uy.edu.um.xperience.persistence;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
@@ -26,6 +26,7 @@ import org.springframework.stereotype.Component;
 public class PrivilegiosBaseDatos implements FlywayMigrationStrategy {
     private static final Logger log = LoggerFactory.getLogger(PrivilegiosBaseDatos.class);
     private static final String NOMBRE_USUARIO = "[A-Za-z][A-Za-z0-9_]{0,63}";
+    private static final String IDENTIFICADOR = "[A-Za-z_][A-Za-z0-9_]{0,127}";
     static final String DATOS = "SELECT, INSERT, UPDATE, DELETE";
     /** Tablas que reciben menos que {@link #DATOS}; el resto de las tablas del esquema recibe DATOS. */
     static final Map<String, String> EXCEPCIONES = Map.of(
@@ -76,30 +77,54 @@ public class PrivilegiosBaseDatos implements FlywayMigrationStrategy {
             throw new IllegalArgumentException("La aplicación no puede usar el mismo usuario que migra el esquema");
         }
         // H2 pasa a mayúsculas el usuario con el que se conecta; se crea igual para que coincidan.
-        String quien = '"' + usuario.toUpperCase(Locale.ROOT) + '"';
-        try (Statement sql = dueno.createStatement()) {
-            sql.execute("CREATE USER IF NOT EXISTS " + quien + " PASSWORD " + literal(password));
-            sql.execute("ALTER USER " + quien + " SET PASSWORD " + literal(password));
-            sql.execute("ALTER USER " + quien + " ADMIN FALSE");
-            for (String tabla : tablas(sql)) {
-                String tablaSql = '"' + tabla.replace("\"", "\"\"") + '"';
-                sql.execute("REVOKE ALL ON " + tablaSql + " FROM " + quien);
-                String privilegios = EXCEPCIONES.getOrDefault(tabla.toLowerCase(Locale.ROOT), DATOS);
-                if (!privilegios.isEmpty()) sql.execute("GRANT " + privilegios + " ON " + tablaSql + " TO " + quien);
-            }
+        String quien = identificador(usuario.toUpperCase(Locale.ROOT));
+        // La contraseña nunca se concatena: se enlaza como parámetro JDBC.
+        ejecutar(dueno, "CREATE USER IF NOT EXISTS " + quien + " PASSWORD ?", password);
+        ejecutar(dueno, "ALTER USER " + quien + " SET PASSWORD ?", password);
+        ejecutar(dueno, "ALTER USER " + quien + " ADMIN FALSE");
+        for (String tabla : tablas(dueno)) {
+            String tablaSql = identificador(tabla);
+            ejecutar(dueno, "REVOKE ALL ON " + tablaSql + " FROM " + quien);
+            String privilegios = EXCEPCIONES.getOrDefault(tabla.toLowerCase(Locale.ROOT), DATOS);
+            if (!privilegios.isEmpty()) ejecutar(dueno, "GRANT " + privilegios + " ON " + tablaSql + " TO " + quien);
         }
         if (!dueno.getAutoCommit()) dueno.commit();
         log.info("Usuario de la aplicación {} limitado a operaciones de datos", usuario);
     }
 
-    private static ArrayList<String> tablas(Statement sql) throws SQLException {
+    private static ArrayList<String> tablas(Connection dueno) throws SQLException {
         var tablas = new ArrayList<String>();
-        try (ResultSet rows = sql.executeQuery("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES "
-                + "WHERE TABLE_SCHEMA = CURRENT_SCHEMA AND TABLE_TYPE = 'BASE TABLE'")) {
-            while (rows.next()) tablas.add(rows.getString(1));
+        try (PreparedStatement sql = dueno.prepareStatement("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES "
+                + "WHERE TABLE_SCHEMA = CURRENT_SCHEMA AND TABLE_TYPE = ?")) {
+            sql.setString(1, "BASE TABLE");
+            try (ResultSet rows = sql.executeQuery()) {
+                while (rows.next()) tablas.add(rows.getString(1));
+            }
         }
         return tablas;
     }
 
-    private static String literal(String value) { return "'" + value.replace("'", "''") + "'"; }
+    /**
+     * Los identificadores no admiten parámetros JDBC. La lista permitida elimina comillas y demás
+     * metacaracteres SQL, y las comillas conservan el valor como un único identificador de H2.
+     */
+    private static String identificador(String nombre) {
+        if (nombre == null || !nombre.matches(IDENTIFICADOR)) {
+            throw new IllegalArgumentException("Identificador SQL inválido");
+        }
+        return '"' + nombre + '"';
+    }
+
+    /**
+     * Solo identificadores validados por {@link #identificador(String)} y privilegios constantes de
+     * {@link #DATOS} / {@link #EXCEPCIONES} forman parte de estas sentencias. Todo valor, en
+     * particular la contraseña, se enlaza como parámetro.
+     */
+    @SuppressWarnings("java:S2077")
+    private static void ejecutar(Connection dueno, String sentencia, String... parametros) throws SQLException {
+        try (PreparedStatement sql = dueno.prepareStatement(sentencia)) {
+            for (int i = 0; i < parametros.length; i++) sql.setString(i + 1, parametros[i]);
+            sql.execute();
+        }
+    }
 }

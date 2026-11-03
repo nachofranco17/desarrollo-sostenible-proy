@@ -2,7 +2,6 @@ package uy.edu.um.xperience;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.ObjectNode;
 import java.net.*;
 import java.net.http.*;
 import java.util.*;
@@ -70,60 +69,19 @@ class EnrollmentIntegrationTest {
     }
 
     @Test
-    void talentCanUpdateOwnProgressIncludingZeroAndHundred() throws Exception {
-        var admin = admin(company());
-        UUID courseId = publish(admin, "CURSO", "Avance propio");
-        var talent = talent();
-        UUID enrollmentId = enroll(talent, courseId);
-
-        var zero = talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            json.writeValueAsString(Map.of("porcentajeAvance", 0)));
-        assertThat(zero.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(zero.body()).path("porcentajeAvance").asInt()).isEqualTo(0);
-
-        var mid = talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            json.writeValueAsString(Map.of("porcentajeAvance", 55)));
-        assertThat(mid.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(mid.body()).path("porcentajeAvance").asInt()).isEqualTo(55);
-
-        var full = talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            json.writeValueAsString(Map.of("porcentajeAvance", 100)));
-        assertThat(full.statusCode()).isEqualTo(200);
-        assertThat(json.readTree(full.body()).path("porcentajeAvance").asInt()).isEqualTo(100);
-
-        assertThat(jdbc.queryForObject(
-            "SELECT porcentaje_avance FROM inscripcion WHERE id = ?", Integer.class, enrollmentId)).isEqualTo(100);
-    }
-
-    @Test
-    void negativeProgressRejected() throws Exception {
-        var enrollmentId = enrollFresh("CURSO", "Negativo");
+    void talentCannotSetOwnProgress() throws Exception {
+        // DS-33: el avance lo calcula el backend; ningún método ni ruta permite que el Talento lo envíe.
+        var enrollmentId = enrollFresh("CURSO", "Avance no escribible");
         var talent = lastTalent;
-        assertThat(talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            json.writeValueAsString(Map.of("porcentajeAvance", -1))).statusCode()).isEqualTo(400);
+        String hundred = json.writeValueAsString(Map.of("porcentajeAvance", 100));
+        for (String method : List.of("PATCH", "PUT", "POST")) {
+            assertThat(talent.send(method, ENROLLMENTS + "/" + enrollmentId + "/progress", hundred).statusCode())
+                .as(method + " /progress").isEqualTo(403);
+        }
+        assertThat(talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId, hundred).statusCode()).isEqualTo(403);
         assertPersistedProgress(enrollmentId, 0);
-    }
-
-    @Test
-    void progressAboveHundredRejected() throws Exception {
-        var enrollmentId = enrollFresh("CURSO", "Sobre100");
-        var talent = lastTalent;
-        assertThat(talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            json.writeValueAsString(Map.of("porcentajeAvance", 101))).statusCode()).isEqualTo(400);
-        assertPersistedProgress(enrollmentId, 0);
-    }
-
-    @Test
-    void invalidProgressTypeRejected() throws Exception {
-        var enrollmentId = enrollFresh("CURSO", "Tipo inválido");
-        var talent = lastTalent;
-        assertThat(talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            "{\"porcentajeAvance\":\"cincuenta\"}").statusCode()).isEqualTo(400);
-        assertThat(talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            "{\"porcentajeAvance\":12.5}").statusCode()).isEqualTo(400);
-        assertThat(talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            "{\"porcentajeAvance\":true}").statusCode()).isEqualTo(400);
-        assertPersistedProgress(enrollmentId, 0);
+        assertThat(json.readTree(talent.get(ENROLLMENTS + "/" + enrollmentId).body()).path("porcentajeAvance").asInt())
+            .isZero();
     }
 
     @Test
@@ -153,16 +111,12 @@ class EnrollmentIntegrationTest {
     }
 
     @Test
-    void talentCannotUpdateOrReadAnotherTalentEnrollment() throws Exception {
+    void talentCannotReadAnotherTalentEnrollment() throws Exception {
         var admin = admin(company());
         UUID courseId = publish(admin, "CURSO", "Ajeno");
         var talentA = talent();
         UUID enrollmentA = enroll(talentA, courseId);
         var talentB = talent();
-
-        assertThat(talentB.send("PATCH", ENROLLMENTS + "/" + enrollmentA + "/progress",
-            json.writeValueAsString(Map.of("porcentajeAvance", 80))).statusCode()).isIn(401, 403);
-        assertPersistedProgress(enrollmentA, 0);
 
         assertThat(talentB.get(ENROLLMENTS + "/" + enrollmentA).statusCode()).isIn(401, 403);
         JsonNode itemsB = items(talentB.get(ENROLLMENTS + "/me"));
@@ -179,19 +133,6 @@ class EnrollmentIntegrationTest {
         assertThat(anonymous.get(ENROLLMENTS + "/me").statusCode()).isIn(401, 403);
         assertThat(anonymous.send("PATCH", ENROLLMENTS + "/" + UUID.randomUUID() + "/progress",
             json.writeValueAsString(Map.of("porcentajeAvance", 10))).statusCode()).isIn(401, 403);
-    }
-
-    @Test
-    void unauthorizedFieldsOnProgressUpdateRejected() throws Exception {
-        var enrollmentId = enrollFresh("CURSO", "Campos extra");
-        var talent = lastTalent;
-        ObjectNode payload = json.createObjectNode();
-        payload.put("porcentajeAvance", 40);
-        payload.put("talentoId", UUID.randomUUID().toString());
-        payload.put("cursoId", UUID.randomUUID().toString());
-        assertThat(talent.send("PATCH", ENROLLMENTS + "/" + enrollmentId + "/progress",
-            json.writeValueAsString(payload)).statusCode()).isEqualTo(400);
-        assertPersistedProgress(enrollmentId, 0);
     }
 
     @Test

@@ -15,7 +15,8 @@ import uy.edu.um.xperience.security.Sujeto;
 import uy.edu.um.xperience.security.Sujetos;
 
 /**
- * Inscripción y avance del Talento (RF4). El PEP ya comprobó inscripcion.crear / inscripcion.ver
+ * Inscripción y avance del Talento (RF4). El avance es de solo lectura: lo calcula el backend, nunca lo
+ * envía el cliente (restricciones-campo.md). El PEP ya comprobó inscripcion.crear / inscripcion.ver
  * a nivel de función; acá se resuelve la instancia (RS11 / RS13): talento y curso salen de la sesión /
  * de consultas acotadas, nunca de un userId del body. El identificador de la inscripción no es llave
  * de acceso: hace falta la relación PROPIO con el sujeto autenticado.
@@ -71,30 +72,10 @@ public class EnrollmentService {
         return enrollments.findOwnedItem(enrollment.id(), talent.id()).orElseThrow(EnrollmentService::denied);
     }
 
-    @Transactional
-    public EnrollmentView.Item updateProgress(UUID id, int porcentajeAvance) {
-        Sujeto subject = subjects.current();
-        Account talent = requireActiveAccount(subject);
-        Enrollment locked = enrollments.findOwnedForUpdate(id, talent.id()).orElse(null);
-        if (locked == null) {
-            // Misma denegación si no existe o es de otro Talento (R11).
-            enrollments.findById(id).ifPresent(foreign -> {
-                if (!policy.autorizar(subject, "inscripcion.ver", foreign)) {
-                    throw denied();
-                }
-            });
-            throw denied();
-        }
-        if (!policy.autorizar(subject, "inscripcion.ver", locked)) {
-            throw denied();
-        }
-        enrollments.updateProgress(locked.id(), talent.id(), porcentajeAvance);
-        return enrollments.findOwnedItem(locked.id(), talent.id()).orElseThrow(EnrollmentService::denied);
-    }
-
     private Enrollment requireOwnedEnrollment(Sujeto subject, UUID id, UUID talentoId) {
         Enrollment owned = enrollments.findOwned(id, talentoId).orElse(null);
         if (owned == null) {
+            // Misma denegación si no existe o es de otro Talento (R11).
             enrollments.findById(id).ifPresent(foreign -> {
                 if (!policy.autorizar(subject, "inscripcion.ver", foreign)) {
                     throw denied();

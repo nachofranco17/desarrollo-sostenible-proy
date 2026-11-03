@@ -47,7 +47,7 @@ Intentar `GET /api/profile/{userId}` no es una ruta de negocio: se deniega (mism
 
 | Endpoint | Validación |
 |---|---|
-| `GET/PATCH /api/enrollments/{id}` (+ `/progress`) | `findOwned(id, talentoSesión)` + `autorizar(inscripcion.ver, …)` |
+| `GET /api/enrollments/{id}` | `findOwned(id, talentoSesión)` + `autorizar(inscripcion.ver, …)` |
 | `POST /api/enrollments` | Solo `cursoId` en body; `talento_id` = sesión; curso publicado + `autorizar` |
 | `/api/company/courses/{id}/**` | Curso por `id` + `empresaId` de sesión; hijos con `curso_id` + `empresa_id` |
 | `/api/company/offers/{id}/**` | Oferta por `id` + `empresaId` de sesión |
@@ -98,7 +98,7 @@ cd backend
 
 1. Registrar Talento A y Talento B. Publicar un curso e inscribir a ambos.
 2. Con A autenticado, obtener el `id` de la inscripción de B (p. ej. desde la base o una sesión previa de B).
-3. `GET /api/enrollments/{id-de-B}` y `PATCH /api/enrollments/{id-de-B}/progress` → 403.
+3. `GET /api/enrollments/{id-de-B}` → 403. `PATCH /api/enrollments/{id-de-B}/progress` también da 403: el endpoint ya no existe (DS-33) y el avance de B no cambia.
 4. `GET /api/enrollments/{id-de-A}` → 200; `GET /api/enrollments/me` → incluye solo las de A.
 5. `GET /api/profile/me` → 200 sin enviar userId; `PATCH` con `userId`/`usuarioId` de B → 400 y el perfil de B no cambia.
 6. (Opcional) En la misma empresa, tomar un entregable de proyecto 1 y llamarlo bajo `/company/courses/{proyecto2}/deliverables/{entregable1}` → 403.

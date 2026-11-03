@@ -214,9 +214,6 @@ button.danger:hover { background: #fff0eb; }
 .progress-bar > span { display: block; height: 100%; background: #134b3c; border-radius: 999px; }
 /* RF4: inscripción y avance */
 .catalog-enroll { margin-top: 24px; display: grid; gap: 12px; max-width: 360px; }
-.enrollment-progress { display: flex; gap: 8px; align-items: center; margin: 0; }
-.enrollment-progress input { width: 88px; margin: 0; padding: 8px 10px; }
-.enrollment-progress button { width: auto; margin: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .type-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .type-option { border: 1px solid #dfe4d9; border-radius: 12px; padding: 14px 16px; cursor: pointer; background: #fcfdfb; }

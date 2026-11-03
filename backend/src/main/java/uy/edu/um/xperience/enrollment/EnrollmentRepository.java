@@ -82,14 +82,6 @@ public class EnrollmentRepository {
             """, ENROLLMENT, id, talentoId).stream().findFirst();
     }
 
-    /** Bloquea la fila propia para actualizar el avance de forma atómica. */
-    public Optional<Enrollment> findOwnedForUpdate(UUID id, UUID talentoId) {
-        return jdbc.query("""
-            SELECT id, talento_id, curso_id, fecha, porcentaje_avance
-            FROM inscripcion WHERE id = ? AND talento_id = ? FOR UPDATE
-            """, ENROLLMENT, id, talentoId).stream().findFirst();
-    }
-
     /** Lectura por id sin dueño: solo para denegar instancias ajenas sin revelar existencia vía otra vía. */
     public Optional<Enrollment> findById(UUID id) {
         return jdbc.query("""
@@ -105,12 +97,5 @@ public class EnrollmentRepository {
             JOIN curso c ON c.id = i.curso_id
             WHERE i.id = ? AND i.talento_id = ?
             """, ITEM, id, talentoId).stream().findFirst();
-    }
-
-    public void updateProgress(UUID id, UUID talentoId, int porcentajeAvance) {
-        jdbc.update("""
-            UPDATE inscripcion SET porcentaje_avance = ?
-            WHERE id = ? AND talento_id = ?
-            """, porcentajeAvance, id, talentoId);
     }
 }
