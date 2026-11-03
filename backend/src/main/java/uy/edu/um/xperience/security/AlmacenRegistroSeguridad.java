@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,18 +63,18 @@ public class AlmacenRegistroSeguridad {
                 || adminUser.equalsIgnoreCase(writerUser) || adminPassword.equals(writerPassword)) {
             throw new IllegalArgumentException("Credenciales del almacén de registros incompletas o repetidas");
         }
-        try (Connection connection = DriverManager.getConnection(url, adminUser, adminPassword);
-             Statement sql = connection.createStatement()) {
-            sql.execute("SET DB_CLOSE_DELAY -1");
-            sql.execute("CREATE TABLE IF NOT EXISTS " + TABLA + " ("
+        String writerIdentifier = sqlIdentifier(writerUser);
+        try (Connection connection = DriverManager.getConnection(url, adminUser, adminPassword)) {
+            executeSql(connection, "SET DB_CLOSE_DELAY -1");
+            executeSql(connection, "CREATE TABLE IF NOT EXISTS " + TABLA + " ("
                 + "ID BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
                 + "REGISTRADO_EN TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, "
                 + "EVENTO VARCHAR(8000) NOT NULL)");
-            sql.execute("CREATE USER IF NOT EXISTS " + writerUser + " PASSWORD " + literal(writerPassword));
-            sql.execute("ALTER USER " + writerUser + " SET PASSWORD " + literal(writerPassword));
-            sql.execute("ALTER USER " + writerUser + " ADMIN FALSE");
-            sql.execute("REVOKE ALL ON " + TABLA + " FROM " + writerUser);
-            sql.execute("GRANT INSERT ON " + TABLA + " TO " + writerUser);
+            executeSql(connection, "CREATE USER IF NOT EXISTS " + writerIdentifier + " PASSWORD ?", writerPassword);
+            executeSql(connection, "ALTER USER " + writerIdentifier + " SET PASSWORD ?", writerPassword);
+            executeSql(connection, "ALTER USER " + writerIdentifier + " ADMIN FALSE");
+            executeSql(connection, "REVOKE ALL ON " + TABLA + " FROM " + writerIdentifier);
+            executeSql(connection, "GRANT INSERT ON " + TABLA + " TO " + writerIdentifier);
         }
     }
 
@@ -97,7 +98,28 @@ public class AlmacenRegistroSeguridad {
         }
     }
 
-    private static String literal(String value) { return "'" + value.replace("'", "''") + "'"; }
+    private static String sqlIdentifier(String user) {
+        if (user == null || !user.matches(NOMBRE_USUARIO)) {
+            throw new IllegalArgumentException("Nombre de usuario del almacén inválido");
+        }
+        // Los identificadores no admiten parámetros JDBC. La lista permitida elimina metacaracteres
+        // SQL y las comillas conservan el valor como un único identificador de H2.
+        return '"' + user.toUpperCase(Locale.ROOT) + '"';
+    }
+
+    /**
+     * Solo el identificador validado por {@link #sqlIdentifier(String)} forma parte de estas
+     * sentencias. Todos los valores, en particular las contraseñas, se enlazan como parámetros.
+     */
+    @SuppressWarnings("java:S2077")
+    private static void executeSql(Connection connection, String statement, String... parameters) throws SQLException {
+        try (PreparedStatement sql = connection.prepareStatement(statement)) {
+            for (int index = 0; index < parameters.length; index++) {
+                sql.setString(index + 1, parameters[index]);
+            }
+            sql.execute();
+        }
+    }
 
     private static boolean isBlank(String value) { return value == null || value.isBlank(); }
 }
