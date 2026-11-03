@@ -1,7 +1,7 @@
 # Modelo de autorización
 
 Requerimiento de seguridad: **R4** (ASVS v5.0.0-8.2.1, 8.2.2)
-Versión: 1.7 (16/10/2026)
+Versión: 1.8 (03/11/2026)
 
 Este documento define cómo se representan los permisos, cuál es el contrato del evaluador de política y qué datos necesita el evaluador para decidir. Traduce a un diseño implementable la [matriz de control de acceso](matriz-control-acceso.md) (R1) y las [restricciones de campo](restricciones-campo.md) (R2).
 
@@ -46,18 +46,18 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 | `material.subir` | Subir, reemplazar o eliminar material | — | — | ORG | — | ORG |
 | `material.descargar` | Descargar material | — | INSCRIPTO | ORG | — | ORG |
 | `inscripcion.crear` | Inscribirse a un curso/proyecto | — | PUBLICADO | — | — | — |
-| `inscripcion.ver` | Ver su inscripción y avance | — | PROPIO | — | — | — |
+| `inscripcion.ver` | Ver su inscripción y avance; actualizar su porcentaje de avance | — | PROPIO | — | — | — |
 | `leccion.completar` | Marcar una lección como completada | — | INSCRIPTO | — | — | — |
 | `entregable.responder` | Enviar respuesta a un entregable | — | INSCRIPTO | — | — | — |
 | `inscripcion.ver_inscriptos` | Ver inscriptos y su avance | — | — | ORG | — | ORG |
 | `oferta.ver` | Ver ofertas publicadas | — | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO |
-| `oferta.gestionar` | Crear, modificar, cerrar y ver borradores | — | — | ORG | ORG | — |
+| `oferta.gestionar` | Crear, modificar y publicar borradores; listar y ver ofertas de la empresa | — | — | ORG | ORG | — |
 | `postulacion.crear` | Postularse a una oferta | — | PUBLICADO | — | — | — |
 | `postulacion.ver` | Ver sus postulaciones y su estado | — | PROPIO | — | — | — |
 | `postulacion.ver_listado` | Ver el listado de postulantes | — | — | ORG | ORG | — |
 | `postulacion.cambiar_estado` | Cambiar el estado de una postulación | — | — | ORG | ORG | — |
 | `curriculum.subir` | Subir o reemplazar el currículum | — | PROPIO | — | — | — |
-| `curriculum.descargar` | Descargar un currículum | — | PROPIO | POSTULANTE | POSTULANTE | — |
+| `curriculum.descargar` | Consultar metadatos del propio currículum o descargar un currículum | — | PROPIO | POSTULANTE | POSTULANTE | — |
 | `staff.invitar` | Invitar un usuario al staff | — | — | ORG | — | — |
 | `staff.cambiar_rol` | Cambiar el rol de un miembro | — | — | ORG | — | — |
 | `staff.dar_baja` | Dar de baja a un miembro | — | — | ORG | — | — |
@@ -67,7 +67,7 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 
 **Caso especial: `sesion.token_csrf`.** Es la acción de `GET /api/auth/csrf`. No tiene filas en la tabla porque todos los sujetos, incluido el Visitante, necesitan el token antes de registrarse o iniciar sesión. El PEP la trata como una regla propia: solo deja pasar el método `GET`, y la respuesta contiene únicamente el token antifalsificación de la propia sesión.
 
-**Caso especial: `demo.permiso_asignable`.** Es la acción de la ruta de demostración `GET /api/demo/permiso-asignable`, que sirve para mostrar la denegación por defecto con una acción declarada pero sin permisos asignados. No forma parte de la matriz de R1 y ninguna migración le carga filas, así que se deniega a todos los roles. `scripts/demo-permiso-asignable.sql` agrega una fila de forma manual, solo en una base local, para mostrar que habilitarla es editar datos y no código.
+**Caso especial: `demo.permiso_asignable`.** Es la acción de la ruta de demostración `GET /api/demo/permiso-asignable`, que sirve para mostrar la denegación por defecto con una acción declarada pero sin permisos asignados. La matriz de RS1 la incluye como denegada para los cinco consumidores: ninguna migración le carga filas. `scripts/demo-permiso-asignable.sql` agrega una fila de forma manual, solo en una base local, para mostrar que habilitarla es editar datos y no código; ese permiso debe retirarse al terminar la demostración.
 
 ### Funcionalidades nuevas (R8)
 
