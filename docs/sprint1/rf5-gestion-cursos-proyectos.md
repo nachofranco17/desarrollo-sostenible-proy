@@ -48,7 +48,7 @@ Todas las rutas están bajo `/api/company/courses`. La empresa sale siempre de l
 | `POST /{id}/deliverables`, `PUT` y `DELETE /{id}/deliverables/{deliverableId}` | `curso.gestionar` | Entregables |
 | `POST /{id}/materials` (multipart, campo `archivo`) | `material.subir` | Subir material |
 | `GET /{id}/materials/{materialId}` | `material.descargar` | Descarga como adjunto |
-| `DELETE /{id}/materials/{materialId}` | `curso.gestionar` | Eliminar material |
+| `DELETE /{id}/materials/{materialId}` | `material.subir` | Eliminar material |
 
 - Un curso de otra empresa responde igual que uno inexistente: 403.
 - Lecciones, entregables y materiales se buscan dentro del curso, así que conocer su id no alcanza.

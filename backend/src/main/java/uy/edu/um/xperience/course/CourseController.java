@@ -127,7 +127,7 @@ public class CourseController {
             .body(download.file());
     }
 
-    @RequiereAccion("curso.gestionar")
+    @RequiereAccion("material.subir")
     @DeleteMapping("/{id}/materials/{materialId}")
     public CourseView.Detail deleteMaterial(@PathVariable UUID id, @PathVariable UUID materialId) {
         return courses.deleteMaterial(id, materialId);

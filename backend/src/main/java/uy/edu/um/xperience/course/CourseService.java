@@ -266,7 +266,7 @@ public class CourseService {
     @Transactional
     public CourseView.Detail deleteMaterial(UUID id, UUID materialId) {
         Sujeto subject = staffSubject();
-        requireModifiable(owned(subject, "curso.gestionar", id, true));
+        requireModifiable(owned(subject, "material.subir", id, true));
         var material = courses.material(materialId, id, subject.empresaId()).orElseThrow(CourseService::denied);
         courses.deleteMaterial(materialId, id, subject.empresaId());
         courses.touch(id, subject.empresaId());

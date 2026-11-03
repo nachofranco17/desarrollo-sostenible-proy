@@ -15,9 +15,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import uy.edu.um.xperience.account.AccountRepository;
 import uy.edu.um.xperience.account.RegisterRequest;
@@ -38,6 +40,9 @@ class CourseIntegrationTest {
     @Autowired CompanyProvisioner provisioner;
     @Autowired PasswordEncoder passwords;
     @Autowired JdbcTemplate jdbc;
+    @Value("${spring.flyway.url}") String ownerUrl;
+    @Value("${spring.flyway.user}") String ownerUser;
+    @Value("${spring.flyway.password}") String ownerPassword;
 
     // ---- RF5 ----
 
@@ -87,6 +92,29 @@ class CourseIntegrationTest {
         assertThat(editor.send("PUT", BASE + "/" + id, data("Otro")).statusCode()).isEqualTo(409);
         assertThat(editor.send("POST", BASE + "/" + id + "/lessons", lessonBody()).statusCode()).isEqualTo(409);
         assertThat(editor.send("POST", BASE + "/" + id + "/publish", "").statusCode()).isEqualTo(200);
+    }
+
+    // RS9 (DS-38): eliminar material exige material.subir, no curso.gestionar.
+    @Test
+    void deletingMaterialRequiresTheMaterialPermission() throws Exception {
+        var editor = member(company(), "EDITOR");
+        UUID id = create(editor, "CURSO", "Material protegido");
+        String material = json.readTree(editor.upload(BASE + "/" + id + "/materials", "guia.pdf", PDF).body())
+            .path("materiales").get(0).path("id").asString();
+        long files = storedFiles();
+        // The application user can only read permiso; changing the catalog is a schema-owner task.
+        var owner = new JdbcTemplate(new DriverManagerDataSource(ownerUrl, ownerUser, ownerPassword));
+        try {
+            owner.update("DELETE FROM permiso WHERE rol = 'EDITOR' AND accion = 'material.subir'");
+            assertThat(editor.upload(BASE + "/" + id + "/materials", "otra.pdf", PDF).statusCode()).isEqualTo(403);
+            assertThat(editor.send("DELETE", BASE + "/" + id + "/materials/" + material, "").statusCode()).isEqualTo(403);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM material WHERE curso_id = ?", Integer.class, id)).isEqualTo(1);
+            assertThat(storedFiles()).isEqualTo(files);
+        } finally {
+            owner.update("INSERT INTO permiso (rol, accion, alcance) VALUES ('EDITOR', 'material.subir', 'ORG')");
+        }
+        assertThat(editor.send("DELETE", BASE + "/" + id + "/materials/" + material, "").statusCode()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM material WHERE curso_id = ?", Integer.class, id)).isZero();
     }
 
     @Test

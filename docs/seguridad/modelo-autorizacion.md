@@ -43,7 +43,7 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 | `catalogo.ver` | Buscar y ver cursos/proyectos publicados | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO | PUBLICADO |
 | `curso.gestionar` | Crear, modificar, cambiar estado y eliminar cursos/proyectos, lecciones y entregables | — | — | ORG | — | ORG |
 | `curso.ver_borrador` | Ver borradores | — | — | ORG | — | ORG |
-| `material.subir` | Subir o reemplazar material | — | — | ORG | — | ORG |
+| `material.subir` | Subir, reemplazar o eliminar material | — | — | ORG | — | ORG |
 | `material.descargar` | Descargar material | — | INSCRIPTO | ORG | — | ORG |
 | `inscripcion.crear` | Inscribirse a un curso/proyecto | — | PUBLICADO | — | — | — |
 | `inscripcion.ver` | Ver su inscripción y avance | — | PROPIO | — | — | — |

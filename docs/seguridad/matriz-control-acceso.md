@@ -28,7 +28,7 @@ Las restricciones a nivel de campo (qué campos puede leer o modificar cada cons
 | Catálogo | Buscar y ver cursos/proyectos publicados | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Curso/proyecto | Crear, modificar, cambiar estado y eliminar (incluye lecciones y entregables) | — | — | org | — | org |
 | | Ver borradores | — | — | org | — | org |
-| Material | Subir o reemplazar | — | — | org | — | org |
+| Material | Subir, reemplazar o eliminar | — | — | org | — | org |
 | | Descargar | — | inscripto | org | — | org |
 | Inscripción | Inscribirse a publicados | — | ✓ | — | — | — |
 | | Ver su inscripción y avance | — | propia | — | — | — |
