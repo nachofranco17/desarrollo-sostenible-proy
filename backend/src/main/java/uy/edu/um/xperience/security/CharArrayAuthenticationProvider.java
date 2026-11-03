@@ -49,7 +49,8 @@ public final class CharArrayAuthenticationProvider extends AbstractUserDetailsAu
     }
 
     private static char[] credentials(UsernamePasswordAuthenticationToken token) {
-        if (token.getCredentials() instanceof char[] password) return password;
+        // Also reached from retrieveUser's catch: a missing token must end as a credentials failure, not an NPE.
+        if (token != null && token.getCredentials() instanceof char[] password) return password;
         throw new BadCredentialsException("Credenciales inválidas");
     }
 }

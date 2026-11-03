@@ -41,6 +41,8 @@ public class Denegaciones {
 
     public void registrar(HttpServletRequest request) {
         String action = "NO_DECLARADA";
+        // Read once so the error path never dereferences a missing request again.
+        String uri = request == null ? null : request.getRequestURI();
         try {
             Sujeto subject;
             try {
@@ -48,14 +50,16 @@ public class Denegaciones {
             } catch (RuntimeException error) {
                 subject = new Sujeto(null, null, null, null);
             }
-            action = request.getAttribute(ACTION) instanceof String a ? a : "NO_DECLARADA";
-            completarMetadatos(request, action);
+            if (request != null) {
+                action = request.getAttribute(ACTION) instanceof String a ? a : "NO_DECLARADA";
+                completarMetadatos(request, action);
+            }
             // Never send passwords, request bodies, invitation tokens or query strings to the audit interface.
-            registry.denegado(subject, action, request.getRequestURI());
+            registry.denegado(subject, action, uri);
         } catch (RuntimeException error) {
             // A failing access log must never turn a denial into something else; the denial still happens.
             log.error("No se pudo registrar la denegacion de {} sobre {}", CodificadorRegistro.codificar(action),
-                CodificadorRegistro.codificar(request.getRequestURI()), error);
+                CodificadorRegistro.codificar(uri), error);
         }
     }
 

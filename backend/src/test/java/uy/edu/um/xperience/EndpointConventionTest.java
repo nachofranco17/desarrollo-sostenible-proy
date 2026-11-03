@@ -16,8 +16,10 @@ import static org.assertj.core.api.Assertions.*;
 @SpringBootTest
 class EndpointConventionTest {
     // Documented special cases with no rows in the permission table on purpose (see the document): the PEP validates
-    // the invitation token instead, and the demo route shows deny by default for an action nobody was granted.
-    private static final Set<String> SPECIAL_ACTIONS = Set.of("invitacion.aceptar", "demo.permiso_asignable");
+    // the invitation token instead, the CSRF token is readable by any subject via GET, and the demo route shows deny by
+    // default for an action nobody was granted.
+    private static final Set<String> SPECIAL_ACTIONS =
+        Set.of("invitacion.aceptar", "sesion.token_csrf", "demo.permiso_asignable");
 
     @Autowired @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping mapping;
 

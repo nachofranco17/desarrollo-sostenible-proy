@@ -65,6 +65,8 @@ Cada endpoint declara una única acción. Esta tabla es la traducción de la mat
 
 **Caso especial: `invitacion.aceptar`.** No tiene filas en la tabla porque el sujeto no tiene sesión ni rol. El PEP la trata como una acción propia cuya única condición es que el token de invitación sea válido y no haya expirado.
 
+**Caso especial: `sesion.token_csrf`.** Es la acción de `GET /api/auth/csrf`. No tiene filas en la tabla porque todos los sujetos, incluido el Visitante, necesitan el token antes de registrarse o iniciar sesión. El PEP la trata como una regla propia: solo deja pasar el método `GET`, y la respuesta contiene únicamente el token antifalsificación de la propia sesión.
+
 **Caso especial: `demo.permiso_asignable`.** Es la acción de la ruta de demostración `GET /api/demo/permiso-asignable`, que sirve para mostrar la denegación por defecto con una acción declarada pero sin permisos asignados. No forma parte de la matriz de R1 y ninguna migración le carga filas, así que se deniega a todos los roles. `scripts/demo-permiso-asignable.sql` agrega una fila de forma manual, solo en una base local, para mostrar que habilitarla es editar datos y no código.
 
 ### Funcionalidades nuevas (R8)
@@ -150,9 +152,11 @@ public void completar(@PathVariable UUID id) { ... }
 
 El PEP (R5) es un `AuthorizationManager` de Spring Security aplicado a todas las rutas de `/api`. Antes de que se ejecute el handler, busca cuál va a atender la solicitud y lee su anotación:
 
+- Si no recibe una solicitud que evaluar (contexto o request nulos), rechaza.
 - Si no hay handler o no es un método de controller, rechaza la solicitud.
 - Si el método no tiene la anotación, rechaza (R8).
 - Si la acción es `invitacion.aceptar`, solo deja pasar con un token de invitación válido.
+- Si la acción es `sesion.token_csrf`, solo deja pasar el método `GET`.
 - Si `puedeInvocar` devuelve `false`, rechaza.
 - Si ocurre cualquier error durante la evaluación, rechaza (R6).
 - En cualquier otro caso, deja pasar la solicitud al handler, que resuelve el nivel de dato.
@@ -168,7 +172,6 @@ public interface RegistroAccesos {
 Casos que no pasan por un controller propio y se contemplan explícitamente:
 
 - **Login y logout.** Los procesan los filtros de Spring Security, antes de llegar a cualquier controller, por lo que la anotación no los cubre. Un filtro propio que se ejecuta antes que ellos los asocia a `sesion.iniciar` y `sesion.cerrar` y consulta al mismo evaluador que el PEP.
-- **Token CSRF (`GET /api/auth/csrf`).** Lo entrega ese mismo filtro sin pasar por el PEP. Es infraestructura de Spring Security y solo devuelve el token antifalsificación de la sesión.
 - **Endpoint `/error` de Spring Boot.** Lo atiende un controller de Spring Boot sin la anotación. Solo se permite el despacho interno de error (`DispatcherType.ERROR`), que escribe la respuesta de un error ya ocurrido sin deshacer la denegación. Si el cliente pide `/error` directamente, se rechaza. La respuesta no incluye mensajes ni trazas (`spring.web.error.*`).
 - **Rutas fuera de `/api`.** Se rechazan con `denyAll()` antes de llegar al PEP, aunque el handler tenga la anotación.
 

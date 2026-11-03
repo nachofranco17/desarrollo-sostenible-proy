@@ -53,6 +53,12 @@ class JsonLoginSecurityTest {
         verify(passwords).matches(any(CharSequence.class), eq(LEGACY_HASH));
     }
 
+    @Test void missingUserWithoutATokenStillFailsAsBadCredentials() {
+        var provider = new CharArrayAuthenticationProvider(email -> { throw new UsernameNotFoundException("Missing"); }, passwords);
+        assertThatThrownBy(() -> provider.retrieveUser("ana@example.test", null))
+            .isInstanceOf(BadCredentialsException.class);
+    }
+
     @ParameterizedTest @ValueSource(strings = {"wrong", "missing", "disabled", "backend-error"})
     void failedAuthenticationAlsoErasesArraysAndTokenReferences(String mode) throws Exception {
         UserDetailsService users = email -> {

@@ -1,13 +1,10 @@
 package uy.edu.um.xperience.security;
 
-import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Covers framework endpoints that never reach an MVC handler. Runs before LogoutFilter. */
@@ -16,10 +13,9 @@ public class SessionPolicyFilter extends OncePerRequestFilter {
     private final Sujetos subjects;
     private final EvaluadorPolitica policy;
     private final Denegaciones denials;
-    private final ObjectMapper json;
     private final SessionLifetime lifetime;
-    public SessionPolicyFilter(Sujetos subjects, EvaluadorPolitica policy, Denegaciones denials, ObjectMapper json, SessionLifetime lifetime) {
-        this.subjects = subjects; this.policy = policy; this.denials = denials; this.json = json;
+    public SessionPolicyFilter(Sujetos subjects, EvaluadorPolitica policy, Denegaciones denials, SessionLifetime lifetime) {
+        this.subjects = subjects; this.policy = policy; this.denials = denials;
         this.lifetime = lifetime;
     }
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -33,13 +29,6 @@ public class SessionPolicyFilter extends OncePerRequestFilter {
                 lifetime.restrict(session);
                 log.error("Fallo al resolver el rol para la vigencia de sesión", error);
             }
-        }
-        // CSRF bootstrap is framework infrastructure, not a domain operation or an unannotated controller.
-        if ("GET".equals(request.getMethod()) && "/api/auth/csrf".equals(path)) {
-            CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-            response.setContentType("application/json");
-            json.writeValue(response.getOutputStream(), Map.of("token", token.getToken(), "headerName", token.getHeaderName()));
-            return;
         }
         String action = switch (path) {
             case "/api/auth/login" -> "sesion.iniciar";

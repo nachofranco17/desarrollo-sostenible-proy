@@ -17,6 +17,7 @@ import org.springframework.web.util.ServletRequestPathUtils;
 @Component
 public class PolicyEnforcementPoint implements AuthorizationManager<RequestAuthorizationContext> {
     private static final Logger log = LoggerFactory.getLogger(PolicyEnforcementPoint.class);
+    public static final String CSRF_TOKEN = "sesion.token_csrf";
     private final ObjectProvider<RequestMappingHandlerMapping> mapping;
     private final Sujetos subjects;
     private final EvaluadorPolitica policy;
@@ -27,7 +28,12 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
         this.invitations = invitations;
     }
     @Override public AuthorizationDecision authorize(Supplier<? extends Authentication> authentication, RequestAuthorizationContext context) {
-        HttpServletRequest request = context.getRequest();
+        HttpServletRequest request = context == null ? null : context.getRequest();
+        if (request == null) {
+            // Without a request there is nothing to evaluate: deny by default instead of failing in the error path.
+            log.error("El PEP recibió una solicitud nula; se deniega");
+            return new AuthorizationDecision(false);
+        }
         try {
             if (!ServletRequestPathUtils.hasParsedRequestPath(request)) ServletRequestPathUtils.parseAndCache(request);
             var chain = mapping.getObject().getHandler(request);
@@ -43,6 +49,14 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
             request.setAttribute(Denegaciones.ACTION, action.value());
             if ("invitacion.aceptar".equals(action.value())) {
                 boolean allowed = invitations.valid(request.getHeader(InvitationTokens.HEADER));
+                if (!allowed) {
+                    Denegaciones.marcarRolDenegado(request);
+                }
+                return new AuthorizationDecision(allowed);
+            }
+            if (CSRF_TOKEN.equals(action.value())) {
+                // Any subject may read its own session's token (it is needed before login), but only by GET.
+                boolean allowed = "GET".equals(request.getMethod());
                 if (!allowed) {
                     Denegaciones.marcarRolDenegado(request);
                 }

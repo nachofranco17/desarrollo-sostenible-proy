@@ -38,7 +38,7 @@ public class SecurityConfiguration {
         var contexts = new DelegatingSecurityContextRepository(
             new RequestAttributeSecurityContextRepository(), new HttpSessionSecurityContextRepository());
         http.securityContext(context -> context.securityContextRepository(contexts));
-        http.addFilterBefore(new SessionPolicyFilter(subjects, policy, denials, json, lifetime), LogoutFilter.class);
+        http.addFilterBefore(new SessionPolicyFilter(subjects, policy, denials, lifetime), LogoutFilter.class);
         // CSRF stays enabled, including registration, login, reauthentication and logout.
         http.authorizeHttpRequests(auth -> auth
             .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()

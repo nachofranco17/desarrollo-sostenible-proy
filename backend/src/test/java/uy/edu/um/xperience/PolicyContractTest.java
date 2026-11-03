@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.*;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -41,6 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PolicyContractTest {
     @Autowired MockMvc mvc;
     @Autowired AuthorizationService policy;
+    @Autowired PolicyEnforcementPoint pep;
+    @Autowired Denegaciones denials;
     @MockitoSpyBean Sujetos subjects;
     @Autowired Usuarios users;
     @Autowired Membresias memberships;
@@ -104,6 +107,28 @@ class PolicyContractTest {
             .andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value("Acceso denegado."));
         verify(registry).denegado(any(), eq("cuenta.gestionar"), eq("/api/account"));
         assertThat(output).contains("Fallo el PEP evaluando /api/account; se deniega", "simulated subject failure");
+    }
+    @Test void pepDeniesByDefaultWhenThereIsNoRequestToEvaluate(CapturedOutput output) {
+        var withoutRequest = mock(RequestAuthorizationContext.class);
+        assertThat(pep.authorize(() -> null, withoutRequest).isGranted()).isFalse();
+        assertThat(pep.authorize(() -> null, null).isGranted()).isFalse();
+        assertThat(output).contains("El PEP recibió una solicitud nula; se deniega");
+    }
+    @Test void denialsWithoutARequestAreStillReportedAndAnswered() throws Exception {
+        assertThatCode(() -> denials.registrar(null)).doesNotThrowAnyException();
+        verify(registry).denegado(any(), eq("NO_DECLARADA"), isNull());
+        var response = new MockHttpServletResponse();
+        assertThatCode(() -> denials.responder(null, response, 403)).doesNotThrowAnyException();
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentAsString()).contains("Acceso denegado.");
+    }
+    @Test void csrfTokenIsServedThroughThePepWithItsDeclaredAction() throws Exception {
+        mvc.perform(get("/api/auth/csrf"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.token").isNotEmpty())
+            .andExpect(jsonPath("$.headerName").value("X-CSRF-TOKEN"))
+            .andExpect(request().attribute(Denegaciones.ACTION, PolicyEnforcementPoint.CSRF_TOKEN));
+        mvc.perform(post("/api/auth/csrf").with(csrf())).andExpect(status().isUnauthorized());
+        verify(registry).denegado(any(), anyString(), eq("/api/auth/csrf"));
     }
     @Test void errorsWhileEvaluatingLoginDenyItBeforeCheckingCredentials(CapturedOutput output) throws Exception {
         doThrow(new IllegalStateException("simulated subject failure")).when(subjects).current();
