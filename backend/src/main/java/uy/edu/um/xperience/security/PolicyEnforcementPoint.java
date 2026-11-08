@@ -28,6 +28,10 @@ public class PolicyEnforcementPoint implements AuthorizationManager<RequestAutho
     }
     @Override public AuthorizationDecision check(Supplier<Authentication> authentication, RequestAuthorizationContext context) {
         HttpServletRequest request = context.getRequest();
+        boolean pruebas = false;
+        if(pruebas){
+            request = null;
+        }
         try {
             if (!ServletRequestPathUtils.hasParsedRequestPath(request)) ServletRequestPathUtils.parseAndCache(request);
             var chain = mapping.getObject().getHandler(request);

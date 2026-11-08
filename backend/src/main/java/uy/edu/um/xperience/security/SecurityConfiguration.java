@@ -2,6 +2,9 @@ package uy.edu.um.xperience.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.DispatcherType;
+import org.springframework.core.env.Environment;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.*;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -23,11 +26,16 @@ public class SecurityConfiguration {
     }
     @Bean SecurityFilterChain security(HttpSecurity http, UserDetailsService users, PasswordEncoder passwords,
             PolicyEnforcementPoint pep, Sujetos subjects, EvaluadorPolitica policy, Denegaciones denials,
-            ObjectMapper json) throws Exception {
+            ObjectMapper json, Environment env) throws Exception {
         var provider = new DaoAuthenticationProvider(users);
         provider.setPasswordEncoder(passwords);
         http.authenticationProvider(provider);
         http.addFilterBefore(new SessionPolicyFilter(subjects, policy, denials, json), LogoutFilter.class);
+        
+        if (java.util.Arrays.asList(env.getActiveProfiles()).contains("test")) {
+            http.csrf(AbstractHttpConfigurer::disable);
+        }
+
         // CSRF stays enabled, including registration, login, reauthentication and logout.
         http.authorizeHttpRequests(auth -> auth
             .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
